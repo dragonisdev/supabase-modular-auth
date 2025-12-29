@@ -1,28 +1,33 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "@supabase-modular-auth/frontend",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev -p 3001",
     "build": "next build",
+    "dev": "next dev -p 3001",
+    "lint": "eslint --cache --cache-location .eslintcache --concurrency=auto .",
+    "lint:fix": "eslint --concurrency=auto --fix .",
     "start": "next start -p 3001",
-    "lint": "eslint"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase-modular-auth/types": "workspace:*",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/estree": "^1.0.8",
     "@types/json-schema": "^7.0.15",
-    "@types/node": "^20",
+    "@types/node": "catalog:",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "catalog:"
   }
 }

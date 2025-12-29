@@ -1,47 +1,49 @@
 {
-  "name": "cc-saas-backend",
+  "name": "@supabase-modular-auth/backend",
   "version": "1.0.0",
+  "private": true,
   "description": "Stateless backend authentication API using Supabase Auth",
-  "main": "dist/index.js",
-  "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
-  },
   "keywords": [
     "auth",
-    "supabase",
     "express",
+    "supabase",
     "typescript"
   ],
-  "author": "",
   "license": "ISC",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "lint": "oxlint --type-aware .",
+    "lint:fix": "oxlint --fix --type-aware .",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
-    "@types/uuid": "^10.0.0",
-    "cookie-parser": "^1.4.6",
+    "@supabase-modular-auth/types": "workspace:*",
+    "@supabase/supabase-js": "^2.89.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.1.5",
-    "helmet": "^7.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "typescript": "catalog:",
     "uuid": "^13.0.0",
     "xss": "^1.0.15",
-    "zod": "^3.22.4",
+    "zod": "catalog:",
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
-    "@types/cookie-parser": "^1.4.6",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.10.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-serve-static-core": "^5.1.0",
+    "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
-    "@typescript-eslint/eslint-plugin": "^6.16.0",
-    "@typescript-eslint/parser": "^6.16.0",
-    "eslint": "^8.56.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.3.3"
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tsx": "^4.21.0"
   }
 }

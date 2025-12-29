@@ -1,54 +1,71 @@
-'use client';
+"use client";
 
-import { useState, type FormEvent } from 'react';
-import { api } from '@/lib/api';
-import Link from 'next/link';
+import { useState, type FormEvent } from "react";
+import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
+import { registerFormSchema } from "@supabase-modular-auth/types";
+import { PasswordInput, FormInput } from "@/components";
+import Link from "next/link";
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
+
+  const passwordsMatch = password === confirmPassword || confirmPassword === "";
+  const showMismatchError = !passwordsMatch && confirmPassword.length > 0;
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
+    setFieldErrors({});
     setSuccess(false);
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    const validation = registerFormSchema.safeParse({
+      email,
+      username: username || undefined,
+      password,
+      confirmPassword,
+    });
+
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = issue.path[0]?.toString() || "general";
+        if (!errors[field]) {
+          errors[field] = issue.message;
+        }
+      }
+      setFieldErrors(errors);
       setLoading(false);
       return;
     }
 
     try {
       const response = await api.register(email, password, username);
-      
+
       if (response.success) {
         setSuccess(true);
-        setEmail('');
-        setUsername('');
-        setPassword('');
-        setConfirmPassword('');
+        setEmail("");
+        setUsername("");
+        setPassword("");
+        setConfirmPassword("");
       } else {
-        // Extract specific validation errors if available
-        if (response.details && response.details.length > 0) {
-          const errorMessages = response.details
-            .map((detail) => detail.message)
-            .join(' ');
-          setError(errorMessages);
-        } else {
-          setError(response.message || 'Registration failed. Please try again.');
+        // Parse field-specific errors from backend
+        const backendFieldErrors = parseFieldErrors(response.details);
+        if (Object.keys(backendFieldErrors).length > 0) {
+          setFieldErrors(backendFieldErrors);
         }
+        setError(getErrorMessage(response));
       }
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,19 +73,19 @@ export default function RegisterPage() {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    setError('');
+    setError("");
 
     try {
       const response = await api.getGoogleAuthUrl();
-      
+
       if (response.success && response.data?.url) {
         // Redirect to Google OAuth URL
         window.location.href = response.data.url;
       } else {
-        setError('Failed to initiate Google signup. Please try again.');
+        setError("Failed to initiate Google signup. Please try again.");
       }
     } catch {
-      setError('An unexpected error occurred with Google signup. Please try again.');
+      setError("An unexpected error occurred with Google signup. Please try again.");
     } finally {
       setGoogleLoading(false);
     }
@@ -83,10 +100,7 @@ export default function RegisterPage() {
             <p className="text-gray-600 mb-6">
               Please check your email to verify your account before logging in.
             </p>
-            <Link
-              href="/login"
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
+            <Link href="/login" className="text-blue-600 hover:text-blue-800 underline">
               Go to Login
             </Link>
           </div>
@@ -99,75 +113,55 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center mb-6 text-black">Register</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+          <FormInput
+            id="email"
+            type="email"
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            error={fieldErrors.email}
+          />
 
-          <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
-            <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              minLength={3}
-              maxLength={30}
-              pattern="[a-zA-Z0-9_-]+"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              3-30 characters, letters, numbers, hyphens, and underscores only
-            </p>
-          </div>
+          <FormInput
+            id="username"
+            type="text"
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            minLength={3}
+            pattern="[a-zA-Z0-9_\-]+"
+            disabled={loading}
+            error={fieldErrors.username}
+            hint="3 characters minimum, letters, numbers, hyphens, and underscores only"
+          />
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+          <PasswordInput
+            id="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+            disabled={loading}
+            error={fieldErrors.password}
+          />
 
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+          <PasswordInput
+            id="confirmPassword"
+            label="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={8}
+            disabled={loading}
+            error={fieldErrors.confirmPassword}
+            showMismatch={showMismatchError}
+          />
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
@@ -180,7 +174,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
@@ -217,11 +211,11 @@ export default function RegisterPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          {googleLoading ? 'Connecting to Google...' : 'Continue with Google'}
+          {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
         <p className="text-center text-sm text-gray-600 mt-4">
-          Already have an account?{' '}
+          Already have an account?{" "}
           <Link href="/login" className="text-blue-600 hover:text-blue-800 underline">
             Login
           </Link>
