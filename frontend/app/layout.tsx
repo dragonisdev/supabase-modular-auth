@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CsrfProvider } from "@/components";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Supabase Modular Auth Frontend Demo",
-  description: "A demo frontend for the Supabase Modular Auth backend showcasing authentication features.",
+  description:
+    "A demo frontend for the Supabase Modular Auth backend showcasing authentication features.",
 };
 
 export default function RootLayout({
@@ -24,10 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <CsrfProvider>{children}</CsrfProvider>
       </body>
     </html>
   );

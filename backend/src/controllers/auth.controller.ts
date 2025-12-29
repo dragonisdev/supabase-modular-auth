@@ -1,16 +1,72 @@
-import { Request, Response, NextFunction } from 'express';
-import SupabaseService from '../services/supabase.service.js';
-import lockoutService from '../services/lockout.service.js';
-import { 
-  registerSchema, 
-  loginSchema, 
-  forgotPasswordSchema, 
-  resetPasswordSchema 
-} from '../validators/auth.validator.js';
-import { AuthError, EmailNotVerifiedError, ValidationError, ErrorCode } from '../utils/errors.js';
-import { setAuthCookie, clearAuthCookie, successResponse } from '../utils/response.js';
-import * as SecurityLogger from '../utils/logger.js';
-import config from '../config/env.js';
+import { Request, Response, NextFunction } from "express";
+import { randomBytes } from "crypto";
+import SupabaseService from "../services/supabase.service.js";
+import lockoutService from "../services/lockout.service.js";
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../validators/auth.validator.js";
+import { AuthError, EmailNotVerifiedError, ValidationError, ErrorCode } from "../utils/errors.js";
+import {
+  setAuthCookie,
+  clearAuthCookie,
+  successResponse,
+  getAuthTokenFromCookies,
+} from "../utils/response.js";
+import * as SecurityLogger from "../utils/logger.js";
+import config from "../config/env.js";
+
+// OAuth state store (in production, use Redis or database)
+const oauthStateStore = new Map<string, { expires: Date; ip?: string }>();
+
+// Clean up expired OAuth states periodically
+setInterval(() => {
+  const now = new Date();
+  for (const [state, data] of oauthStateStore.entries()) {
+    if (data.expires < now) {
+      oauthStateStore.delete(state);
+    }
+  }
+}, 60000); // Every minute
+
+/**
+ * Generate a secure OAuth state parameter
+ */
+const generateOAuthState = (ip?: string): string => {
+  const state = randomBytes(32).toString("base64url");
+  oauthStateStore.set(state, {
+    expires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    ip,
+  });
+  return state;
+};
+
+/**
+ * Validate OAuth state parameter
+ */
+const validateOAuthState = (state: string, _ip?: string): boolean => {
+  const data = oauthStateStore.get(state);
+  if (!data) {
+    return false;
+  }
+
+  oauthStateStore.delete(state); // One-time use
+
+  if (data.expires < new Date()) {
+    return false;
+  }
+
+  // Optional: Verify IP matches (may cause issues with mobile networks)
+  /*
+  if (ip && data.ip && data.ip !== ip) {
+    return false;
+  }
+  */
+
+  return true;
+};
 
 export class AuthController {
   /**
@@ -22,10 +78,24 @@ export class AuthController {
       // Validate input
       const validation = registerSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid registration data', validation.error);
+        throw new ValidationError("Invalid registration data", validation.error);
       }
 
       const { email, password, username } = validation.data;
+      const clientIp = req.ip;
+
+      // Check if IP is locked from too many registration attempts
+      if (lockoutService.isLocked(`register:${email}`, clientIp)) {
+        const remainingMinutes = lockoutService.getRemainingLockoutTime(
+          `register:${email}`,
+          clientIp,
+        );
+        throw new AuthError(
+          `Too many registration attempts. Try again in ${remainingMinutes} minutes.`,
+          ErrorCode.RATE_LIMITED,
+        );
+      }
+
       const supabase = SupabaseService.getClient();
 
       // Register user with Supabase
@@ -34,90 +104,92 @@ export class AuthController {
         password,
         options: {
           emailRedirectTo: `${config.FRONTEND_URL}/auth/verify`,
-          data: {
-            username: username,
-          },
+          data: username ? { username } : undefined,
         },
       });
 
       if (error) {
-        // Log detailed error information for debugging
-        SecurityLogger.logRegistrationError(email, error as Error, req);
-        
-        // Handle specific error cases with user-friendly messages
-        const errorMessage = error.message?.toLowerCase() || '';
-        type SupabaseError = { code?: string; status?: number; name?: string; message?: string };
-        const supaErrReg = error as SupabaseError;
-        const errorCode = supaErrReg.code || '';
-        const errorStatus = supaErrReg.status || 0;
+        // Record failed attempt for rate limiting
+        lockoutService.recordFailedAttempt(`register:${email}`, clientIp);
 
-        // Log error context securely (without full error object)
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Registration Error Analysis:', {
-            errorCode,
-            errorStatus,
-            errorName: error.name,
-            hasMessage: !!error.message
-          });
-        }
+        // Log error securely
+        SecurityLogger.logRegistrationError(email, error as Error, req);
+
+        // Handle specific error cases with user-friendly messages
+        const errorMessage = error.message?.toLowerCase() || "";
+        type SupabaseError = { code?: string; status?: number; name?: string; message?: string };
+        const supaErr = error as SupabaseError;
+        const errorCode = supaErr.code || "";
 
         // Connection/timeout errors
-        if (error.name === 'AuthRetryableFetchError' || 
-            errorMessage.includes('fetch failed') || 
-            errorMessage.includes('timeout') ||
-            errorCode === 'UND_ERR_CONNECT_TIMEOUT') {
+        if (
+          error.name === "AuthRetryableFetchError" ||
+          errorMessage.includes("fetch failed") ||
+          errorMessage.includes("timeout") ||
+          errorCode === "UND_ERR_CONNECT_TIMEOUT"
+        ) {
           throw new AuthError(
-            'Unable to connect to authentication service. Please check your internet connection and try again.',
-            ErrorCode.CONNECTION_FAILED
+            "Unable to connect to authentication service. Please try again.",
+            ErrorCode.CONNECTION_FAILED,
           );
         }
 
         // Enhanced duplicate email detection
-        if (errorCode === 'user_already_exists' || 
-            errorCode === 'email_address_not_available' ||
-            errorMessage.includes('already registered') ||
-            errorMessage.includes('user already exists') ||
-            errorMessage.includes('email already') ||
-            errorMessage.includes('duplicate') ||
-            (errorStatus === 422 && errorMessage.includes('email'))) {
-          SecurityLogger.warn(`Duplicate registration attempt for email: ${email}`, { ip: req.ip });
-          throw new AuthError(
-            'This email is already registered. Please login instead or use the "Forgot Password" option if you need to reset your password.',
-            ErrorCode.USER_EXISTS
+        if (
+          errorCode === "user_already_exists" ||
+          errorCode === "email_address_not_available" ||
+          errorMessage.includes("already registered") ||
+          errorMessage.includes("user already exists") ||
+          errorMessage.includes("email already") ||
+          errorMessage.includes("duplicate")
+        ) {
+          SecurityLogger.warn(`Duplicate registration attempt`, { ip: clientIp });
+          // Non-enumerating response - same as success
+          successResponse(
+            res,
+            "Registration successful. Please check your email to verify your account.",
+            undefined,
+            201,
           );
-        }
-        
-        if (errorCode === 'email_address_invalid' || errorMessage.includes('email') && errorMessage.includes('invalid')) {
-          throw new ValidationError('Please enter a valid email address.');
-        }
-        
-        if (errorMessage.includes('password') && (errorMessage.includes('weak') || errorMessage.includes('short'))) {
-          throw new ValidationError('Password is not strong enough. Please use a stronger password.');
+          return;
         }
 
-        if (errorCode === 'over_email_send_rate_limit') {
-          throw new AuthError('Too many registration attempts. Please try again later.', ErrorCode.RATE_LIMITED);
+        if (errorCode === "email_address_invalid") {
+          throw new ValidationError("Please enter a valid email address.");
+        }
+
+        if (errorCode === "over_email_send_rate_limit") {
+          throw new AuthError(
+            "Too many registration attempts. Please try again later.",
+            ErrorCode.RATE_LIMITED,
+          );
         }
 
         // Service unavailable errors
-        if (errorMessage.includes('service unavailable') || errorMessage.includes('502') || errorMessage.includes('503')) {
+        if (
+          errorMessage.includes("service unavailable") ||
+          errorMessage.includes("502") ||
+          errorMessage.includes("503")
+        ) {
           throw new AuthError(
-            'Authentication service is temporarily unavailable. Please try again in a few minutes.',
-            ErrorCode.SERVICE_UNAVAILABLE
+            "Authentication service is temporarily unavailable. Please try again.",
+            ErrorCode.SERVICE_UNAVAILABLE,
           );
         }
-        
-        // Generic fallback - don't expose internal error messages in production
-        const publicMessage = process.env.NODE_ENV === 'development' 
-          ? `Registration failed: ${error.message}. Please try again or contact support if the problem persists.`
-          : 'Registration failed. Please try again or contact support if the problem persists.';
-        
-        throw new AuthError(publicMessage, ErrorCode.REGISTRATION_FAILED);
+
+        // Generic fallback
+        throw new AuthError(
+          "Registration failed. Please try again.",
+          ErrorCode.REGISTRATION_FAILED,
+        );
       }
 
       if (!data.user) {
-        throw new AuthError('Registration failed');
+        throw new AuthError("Registration failed");
       }
+
+      // Clear rate limit on successful registration
+      lockoutService.clearAttempts(`register:${email}`, clientIp);
 
       // Log successful registration
       SecurityLogger.logRegistration(email, req);
@@ -125,9 +197,9 @@ export class AuthController {
       // Success - email verification required
       successResponse(
         res,
-        'Registration successful. Please check your email to verify your account.',
+        "Registration successful. Please check your email to verify your account.",
         undefined,
-        201
+        201,
       );
     } catch (error) {
       next(error);
@@ -143,17 +215,19 @@ export class AuthController {
       // Validate input
       const validation = loginSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid login data', validation.error);
+        throw new ValidationError("Invalid login data", validation.error);
       }
 
       const { email, password } = validation.data;
+      const clientIp = req.ip;
 
       // Check if account is locked
-      if (lockoutService.isLocked(email)) {
-        const remainingMinutes = lockoutService.getRemainingLockoutTime(email);
+      if (lockoutService.isLocked(email, clientIp)) {
+        const remainingMinutes = lockoutService.getRemainingLockoutTime(email, clientIp);
         SecurityLogger.logAccountLockout(email, req);
         throw new AuthError(
-          `Account temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minutes.`
+          `Account temporarily locked. Try again in ${remainingMinutes} minutes.`,
+          ErrorCode.RATE_LIMITED,
         );
       }
 
@@ -166,66 +240,73 @@ export class AuthController {
       });
 
       if (error) {
-        // Log detailed error information for debugging
-        SecurityLogger.logError(error as Error, req, { operation: 'login', email });
-        
-        const errorMessage = error.message?.toLowerCase() || '';
-        const supaErrLogin = error as { code?: string };
-        const errorCode = supaErrLogin.code || '';
+        // Log error securely
+        SecurityLogger.logError(error as Error, req, { operation: "login" });
+
+        const errorMessage = error.message?.toLowerCase() || "";
+        const supaErr = error as { code?: string };
+        const errorCode = supaErr.code || "";
 
         // Record failed attempt
-        const shouldLock = lockoutService.recordFailedAttempt(email);
-        SecurityLogger.logFailedLogin(email, req, errorMessage);
+        const shouldLock = lockoutService.recordFailedAttempt(email, clientIp);
+        SecurityLogger.logFailedLogin(email, req, "Invalid credentials");
 
         // Monitor for suspicious patterns
-        const failedAttempts = lockoutService.getFailedAttempts(email);
-        if (failedAttempts >= 3) {
-          SecurityLogger.logSecurityEvent('REPEATED_LOGIN_FAILURES', req, {
-            email,
-            attemptCount: failedAttempts,
-            userAgent: req.get('User-Agent')
+        const status = lockoutService.getLockoutStatus(email, clientIp);
+        if (status.failedAttempts >= 3) {
+          SecurityLogger.logSecurityEvent("REPEATED_LOGIN_FAILURES", req, {
+            attemptCount: status.failedAttempts,
+            totalLockouts: status.totalLockouts,
           });
         }
 
         if (shouldLock) {
           SecurityLogger.logAccountLockout(email, req);
-          throw new AuthError('Too many failed attempts. Account locked for 15 minutes.');
-        }
-
-        // Connection/timeout errors
-        if (error.name === 'AuthRetryableFetchError' || 
-            errorMessage.includes('fetch failed') || 
-            errorMessage.includes('timeout') ||
-            errorCode === 'UND_ERR_CONNECT_TIMEOUT') {
           throw new AuthError(
-            'Unable to connect to authentication service. Please check your internet connection and try again.',
-            ErrorCode.CONNECTION_FAILED
+            "Too many failed attempts. Account locked for 15 minutes.",
+            ErrorCode.RATE_LIMITED,
           );
         }
 
-        if (errorCode === 'email_not_confirmed' || errorMessage.includes('email') && errorMessage.includes('confirm')) {
-          throw new EmailNotVerifiedError('Please verify your email before logging in. Check your inbox for the verification link.');
+        // Connection/timeout errors
+        if (
+          error.name === "AuthRetryableFetchError" ||
+          errorMessage.includes("fetch failed") ||
+          errorMessage.includes("timeout") ||
+          errorCode === "UND_ERR_CONNECT_TIMEOUT"
+        ) {
+          throw new AuthError(
+            "Unable to connect to authentication service. Please try again.",
+            ErrorCode.CONNECTION_FAILED,
+          );
         }
 
-        if (errorMessage.includes('user') && errorMessage.includes('banned')) {
-          throw new AuthError('Your account has been suspended. Please contact support.');
+        if (
+          errorCode === "email_not_confirmed" ||
+          (errorMessage.includes("email") && errorMessage.includes("confirm"))
+        ) {
+          throw new EmailNotVerifiedError("Please verify your email before logging in.");
         }
 
-        if (errorMessage.includes('invalid') || errorMessage.includes('credentials')) {
-          throw new AuthError('Invalid email or password.');
+        if (errorMessage.includes("banned")) {
+          throw new AuthError("Your account has been suspended. Please contact support.");
         }
 
-        if (errorCode === 'too_many_requests' || errorMessage.includes('too many')) {
-          throw new AuthError('Too many login attempts. Please try again later.', ErrorCode.RATE_LIMITED);
+        if (errorCode === "too_many_requests") {
+          throw new AuthError(
+            "Too many login attempts. Please try again later.",
+            ErrorCode.RATE_LIMITED,
+          );
         }
 
-        throw new AuthError(`Login failed: ${error.message || 'Unknown error occurred'}. Please try again or contact support if the problem persists.`);
+        // Non-enumerating error for invalid credentials
+        throw new AuthError("Invalid email or password.");
       }
 
       if (!data.user || !data.session) {
-        lockoutService.recordFailedAttempt(email);
-        SecurityLogger.logFailedLogin(email, req, 'Invalid credentials');
-        throw new AuthError('Invalid email or password.');
+        lockoutService.recordFailedAttempt(email, clientIp);
+        SecurityLogger.logFailedLogin(email, req, "No session returned");
+        throw new AuthError("Invalid email or password.");
       }
 
       // Check if email is verified
@@ -234,13 +315,13 @@ export class AuthController {
       }
 
       // Clear failed attempts on successful login
-      lockoutService.clearAttempts(email);
+      lockoutService.clearAttempts(email, clientIp);
       SecurityLogger.logSuccessfulLogin(email, req);
 
       // Set auth cookie with access token
       setAuthCookie(res, data.session.access_token);
 
-      successResponse(res, 'Login successful', {
+      successResponse(res, "Login successful", {
         user: {
           id: data.user.id,
           email: data.user.email,
@@ -257,27 +338,27 @@ export class AuthController {
    */
   async logout(req: Request, res: Response): Promise<void> {
     try {
-      const token = req.cookies.auth_token;
+      const token = getAuthTokenFromCookies(req.cookies as Record<string, string>);
 
       if (token) {
-        const supabase = SupabaseService.getAdminClient();
         try {
-          // Sign out from Supabase (requires admin client)
-          await supabase.auth.admin.signOut(token);
+          // Sign out from Supabase using admin client
+          const adminClient = SupabaseService.getAdminClient();
+          await adminClient.auth.admin.signOut(token);
         } catch (supabaseError) {
           // Log but don't fail - cookie will still be cleared
-          console.error('Supabase logout error:', supabaseError);
+          SecurityLogger.logError(supabaseError as Error, req, { operation: "logout" });
         }
       }
 
       // Always clear cookie
       clearAuthCookie(res);
 
-      successResponse(res, 'Logout successful');
+      successResponse(res, "Logout successful");
     } catch (_error) {
       // Even if everything fails, try to clear the cookie
       clearAuthCookie(res);
-      successResponse(res, 'Logout successful');
+      successResponse(res, "Logout successful");
     }
   }
 
@@ -290,7 +371,7 @@ export class AuthController {
       // Validate input
       const validation = forgotPasswordSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid email', validation.error);
+        throw new ValidationError("Invalid email", validation.error);
       }
 
       const { email } = validation.data;
@@ -302,8 +383,8 @@ export class AuthController {
       });
 
       if (error) {
-        console.error('Supabase forgot password error:', error);
-        // Still return success to prevent email enumeration, but log it
+        // Log error but don't expose it to user
+        SecurityLogger.logError(error as Error, req, { operation: "forgot-password" });
       }
 
       // Log password reset request
@@ -312,7 +393,7 @@ export class AuthController {
       // Always return success to prevent email enumeration
       successResponse(
         res,
-        'If an account exists with this email, a password reset link has been sent.'
+        "If an account exists with this email, a password reset link has been sent.",
       );
     } catch (error) {
       next(error);
@@ -328,49 +409,67 @@ export class AuthController {
       // Validate input
       const validation = resetPasswordSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid password', validation.error);
+        throw new ValidationError("Invalid input", validation.error);
       }
 
       const { password, token } = validation.data;
 
-      // First, verify the token and get the user using anon client
+      // Verify the token and get the user using anon client
       const anonClient = SupabaseService.getClient();
-      const { data: { user }, error: userError } = await anonClient.auth.getUser(token);
+      const {
+        data: { user },
+        error: userError,
+      } = await anonClient.auth.getUser(token);
 
       if (userError || !user) {
-        console.error('Supabase get user error:', userError);
-        throw new AuthError('Password reset link is invalid or expired. Please request a new one.');
+        SecurityLogger.logSecurityEvent("INVALID_RESET_TOKEN", req);
+        throw new AuthError("Password reset link is invalid or expired. Please request a new one.");
       }
 
-      // Now use admin client to update the password
+      // Use admin client to update the password
       const adminClient = SupabaseService.getAdminClient();
-      const { error } = await adminClient.auth.admin.updateUserById(
-        user.id,
-        { password }
-      );
+      const { error } = await adminClient.auth.admin.updateUserById(user.id, { password });
 
       if (error) {
-        console.error('Supabase reset password error:', error);
-        
-        const errorMessage = error.message?.toLowerCase() || '';
-        const supaErrReset = error as { code?: string };
-        const errorCode = supaErrReset.code || '';
+        SecurityLogger.logError(error as Error, req, { operation: "reset-password" });
 
-        if (errorCode === 'invalid_token' || errorMessage.includes('invalid') || errorMessage.includes('expired')) {
-          throw new AuthError('Password reset link is invalid or expired. Please request a new one.');
+        const errorMessage = error.message?.toLowerCase() || "";
+        const supaErr = error as { code?: string };
+        const errorCode = supaErr.code || "";
+
+        if (
+          errorCode === "invalid_token" ||
+          errorMessage.includes("invalid") ||
+          errorMessage.includes("expired")
+        ) {
+          throw new AuthError(
+            "Password reset link is invalid or expired. Please request a new one.",
+          );
         }
 
-        if (errorMessage.includes('password') && (errorMessage.includes('weak') || errorMessage.includes('short'))) {
-          throw new ValidationError('Password is not strong enough. Please use a stronger password.');
+        if (
+          errorMessage.includes("password") &&
+          (errorMessage.includes("weak") || errorMessage.includes("short"))
+        ) {
+          throw new ValidationError(
+            "Password is not strong enough. Please use a stronger password.",
+          );
         }
 
-        throw new AuthError('Password reset failed. Please try again.');
+        throw new AuthError("Password reset failed. Please try again.");
       }
 
-      // Clear the token cookie
+      // Reset lockout for this user on successful password change
+      if (user.email) {
+        lockoutService.fullReset(user.email);
+      }
+
+      // Clear the auth cookie
       clearAuthCookie(res);
 
-      successResponse(res, 'Password reset successful. Please login with your new password.');
+      SecurityLogger.logSecurityEvent("PASSWORD_RESET_SUCCESS", req, { userId: user.id });
+
+      successResponse(res, "Password reset successful. Please login with your new password.");
     } catch (error) {
       next(error);
     }
@@ -378,33 +477,35 @@ export class AuthController {
 
   /**
    * GET /auth/google/url
-   * Get Google OAuth URL
+   * Get Google OAuth URL with CSRF protection via state parameter
    */
-  async getGoogleAuthUrl(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getGoogleAuthUrl(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const supabase = SupabaseService.getClient();
+      const state = generateOAuthState(req.ip);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
-          redirectTo: `${config.BACKEND_URL || 'http://localhost:3000'}/auth/google/callback`,
+          redirectTo: `${config.BACKEND_URL || `http://localhost:${config.PORT}`}/auth/google/callback`,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
+            state, // CSRF protection
           },
         },
       });
 
       if (error) {
-        console.error('OAuth URL generation error:', error);
-        throw new AuthError('Failed to generate OAuth URL. Please try again later.');
+        SecurityLogger.logError(error as Error, req, { operation: "oauth-url" });
+        throw new AuthError("Failed to generate OAuth URL. Please try again later.");
       }
 
       if (!data.url) {
-        throw new AuthError('OAuth provider not configured properly.');
+        throw new AuthError("OAuth provider not configured properly.");
       }
 
-      successResponse(res, 'OAuth URL generated', { url: data.url });
+      successResponse(res, "OAuth URL generated", { url: data.url });
     } catch (error) {
       next(error);
     }
@@ -412,14 +513,32 @@ export class AuthController {
 
   /**
    * GET /auth/google/callback
-   * Handle Google OAuth callback
+   * Handle Google OAuth callback with state validation
    */
   async handleGoogleCallback(req: Request, res: Response, _next: NextFunction): Promise<void> {
-    try {
-      const { code } = req.query;
+    const frontendErrorUrl = `${config.FRONTEND_URL}/auth/error`;
 
-      if (!code || typeof code !== 'string') {
-        throw new AuthError('Authorization code required');
+    try {
+      const { code, state, error: oauthError } = req.query;
+
+      // Handle OAuth errors from provider
+      if (oauthError) {
+        SecurityLogger.logSecurityEvent("OAUTH_ERROR", req, { error: oauthError });
+        res.redirect(`${frontendErrorUrl}?error=oauth_denied`);
+        return;
+      }
+
+      // Validate state parameter (CSRF protection)
+      if (!state || typeof state !== "string" || !validateOAuthState(state, req.ip)) {
+        SecurityLogger.logSecurityEvent("OAUTH_INVALID_STATE", req);
+        res.redirect(`${frontendErrorUrl}?error=invalid_state`);
+        return;
+      }
+
+      if (!code || typeof code !== "string") {
+        SecurityLogger.logSecurityEvent("OAUTH_NO_CODE", req);
+        res.redirect(`${frontendErrorUrl}?error=no_code`);
+        return;
       }
 
       const supabase = SupabaseService.getClient();
@@ -428,17 +547,23 @@ export class AuthController {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error || !data.session) {
-        throw new AuthError('OAuth authentication failed');
+        SecurityLogger.logError((error as Error) || new Error("No session"), req, {
+          operation: "oauth-callback",
+        });
+        res.redirect(`${frontendErrorUrl}?error=auth_failed`);
+        return;
       }
 
       // Set auth cookie
       setAuthCookie(res, data.session.access_token);
 
-      // Redirect to frontend
+      SecurityLogger.logSuccessfulLogin(data.user?.email || "oauth-user", req);
+
+      // Redirect to frontend dashboard
       res.redirect(`${config.FRONTEND_URL}/dashboard`);
-    } catch (_error) {
-      // Redirect to frontend with error
-      res.redirect(`${config.FRONTEND_URL}/auth/error`);
+    } catch (error) {
+      SecurityLogger.logError(error as Error, req, { operation: "oauth-callback" });
+      res.redirect(frontendErrorUrl);
     }
   }
 
@@ -448,33 +573,36 @@ export class AuthController {
    */
   async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const token = req.cookies.auth_token;
+      const token = getAuthTokenFromCookies(req.cookies as Record<string, string>);
 
       if (!token) {
-        throw new AuthError('Not authenticated. Please login.');
+        throw new AuthError("Not authenticated. Please login.");
       }
 
       const supabase = SupabaseService.getClient();
-      const { data: { user }, error } = await supabase.auth.getUser(token);
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser(token);
 
       if (error) {
-        console.error('Get user error:', error);
+        SecurityLogger.logError(error as Error, req, { operation: "get-user" });
         clearAuthCookie(res);
-        
-        const errorMessage = error.message?.toLowerCase() || '';
-        if (errorMessage.includes('expired') || errorMessage.includes('invalid')) {
-          throw new AuthError('Your session has expired. Please login again.');
+
+        const errorMessage = error.message?.toLowerCase() || "";
+        if (errorMessage.includes("expired") || errorMessage.includes("invalid")) {
+          throw new AuthError("Your session has expired. Please login again.");
         }
-        
-        throw new AuthError('Invalid session. Please login again.');
+
+        throw new AuthError("Invalid session. Please login again.");
       }
 
       if (!user) {
         clearAuthCookie(res);
-        throw new AuthError('User not found. Please login again.');
+        throw new AuthError("User not found. Please login again.");
       }
 
-      successResponse(res, 'User retrieved', {
+      successResponse(res, "User retrieved", {
         user: {
           id: user.id,
           email: user.email,

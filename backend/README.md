@@ -15,7 +15,6 @@ Test: `curl http://localhost:3000/health`
 ## Docs
 
 - **[backend.md](backend.md)** - API reference
-- **[../PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md)** - Deploy guide
 
 ## Project Structure
 
@@ -35,10 +34,36 @@ src/
 Get from [Supabase Dashboard](https://supabase.com/dashboard):
 
 ```env
+# Required
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=eyJxxx
 SUPABASE_SERVICE_ROLE_KEY=eyJxxx
 FRONTEND_URL=http://localhost:3001
+
+# Optional - Server
+PORT=3000
+NODE_ENV=development
+BACKEND_URL=http://localhost:3000
+
+# Optional - Cookies
+COOKIE_NAME=auth_token
+COOKIE_SECURE=false
+COOKIE_SAME_SITE=lax
+COOKIE_MAX_AGE_DAYS=7
+
+# Optional - Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+AUTH_RATE_LIMIT_MAX_REQUESTS=5
+
+# Optional - Security
+TRUST_PROXY=1
+REQUEST_TIMEOUT_MS=30000
+MAX_REQUEST_SIZE=10kb
+
+# Optional - Lockout
+LOCKOUT_MAX_ATTEMPTS=5
+LOCKOUT_DURATION_MS=900000
 ```
 
 ## Architecture
@@ -75,20 +100,21 @@ async myMethod(req, res, next) {
 }
 
 // routes/auth.routes.ts
-router.post('/endpoint', authLimiter, (req, res, next) => 
+router.post('/endpoint', authLimiter, (req, res, next) =>
   controller.myMethod(req, res, next)
 );
 ```
 
 ## Security
 
+- CSRF protection (Double Submit Cookie)
 - Rate limiting per IP
 - Account lockout (5 fails → 15 min)
 - Password strength (zxcvbn)
 - XSS sanitization
 - Security event logging
 
-⚠️ **Production:** Lockout uses in-memory storage. Add Redis for multi-instance (see PRODUCTION_DEPLOYMENT.md).
+⚠️ **Production:** Lockout uses in-memory storage. Add Redis for multi-instance.
 
 ## Commands
 
@@ -97,7 +123,3 @@ pnpm dev        # Dev server
 pnpm build      # Production build
 pnpm type-check # Check types
 ```
-
-## Deploy
-
-Railway/Render/Fly.io for backend, Vercel for frontend. See [PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md).

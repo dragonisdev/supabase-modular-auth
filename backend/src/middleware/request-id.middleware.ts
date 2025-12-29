@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { randomUUID } from 'crypto';
+import { Request, Response, NextFunction } from "express";
+import { randomUUID } from "crypto";
 
 // Extend Express Request interface to include id
-declare module 'express-serve-static-core' {
+declare module "express-serve-static-core" {
   interface Request {
     id?: string;
   }
@@ -12,12 +12,8 @@ declare module 'express-serve-static-core' {
  * Request ID Middleware
  * Generates a unique ID for each request for tracing and debugging
  */
-export const requestIdMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   req.id = randomUUID();
-  res.setHeader('X-Request-ID', req.id);
+  res.setHeader("X-Request-ID", req.id);
   next();
 };

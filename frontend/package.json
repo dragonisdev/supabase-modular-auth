@@ -1,20 +1,22 @@
 {
-  "name": "frontend",
+  "name": "@supabase-modular-auth/frontend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "dev": "next dev -p 3001",
     "lint": "eslint --cache --cache-location .eslintcache --concurrency=auto .",
     "lint:fix": "eslint --concurrency=auto --fix .",
+    "start": "next start -p 3001",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase-modular-auth/types": "workspace:*",
     "next": "16.1.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,13 +1,18 @@
 packages:
   - backend
   - frontend
+  - types
 
 catalog:
-  '@types/node': ^20
+  "@types/node": ^20
+  oxlint: "^1.35.0"
+  oxlint-tsgolint: "^0.10.0"
   typescript: ^5
+  zod: ^4.2.1
 
 lockfileIncludeTarballUrl: true
 
 onlyBuiltDependencies:
+  - esbuild
   - sharp
   - unrs-resolver

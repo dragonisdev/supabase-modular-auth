@@ -1,13 +1,17 @@
 {
-  "name": "cc-saas",
+  "name": "supabase-modular-auth",
   "version": "1.0.0",
+  "license": "ISC",
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r --parallel build",
-    "start": "pnpm -r --parallel start",
+    "dev": "pnpm -r --parallel dev",
+    "format": "oxfmt",
     "lint": "pnpm -r --parallel lint",
     "lint:fix": "pnpm -r --parallel lint:fix",
+    "start": "pnpm -r --parallel start",
     "type-check": "pnpm -r --parallel type-check"
   },
-  "license": "ISC"
+  "devDependencies": {
+    "oxfmt": "^0.21.0"
+  }
 }

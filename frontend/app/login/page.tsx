@@ -1,47 +1,64 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { api } from '@/lib/api';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from "react";
+import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
+import { loginSchema } from "@supabase-modular-auth/types";
+import { PasswordInput, FormInput } from "@/components";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
+    setFieldErrors({});
+
+    const validation = loginSchema.safeParse({ email, password });
+
+    if (!validation.success) {
+      const errors: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = issue.path[0]?.toString() || "general";
+        if (!errors[field]) {
+          errors[field] = issue.message;
+        }
+      }
+      setFieldErrors(errors);
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await api.login(email, password);
-      
+
       if (response.success) {
         // Verify authentication by fetching user data
         const meResponse = await api.getMe();
-        
+
         if (meResponse.success) {
-          router.push('/dashboard');
+          router.push("/dashboard");
         } else {
-          setError('Login verification failed. Please try again.');
+          setError("Login verification failed. Please try again.");
         }
       } else {
-        // Handle specific error codes
-        if (response.error === 'EMAIL_NOT_VERIFIED') {
-          setError('Please verify your email before logging in.');
-        } else if (response.error === 'AUTH_FAILED') {
-          setError('Invalid email or password.');
-        } else {
-          setError(response.message || 'Login failed. Please try again.');
+        // Parse field-specific errors from backend
+        const backendFieldErrors = parseFieldErrors(response.details);
+        if (Object.keys(backendFieldErrors).length > 0) {
+          setFieldErrors(backendFieldErrors);
         }
+        setError(getErrorMessage(response));
       }
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -49,19 +66,19 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    setError('');
+    setError("");
 
     try {
       const response = await api.getGoogleAuthUrl();
-      
+
       if (response.success && response.data?.url) {
         // Redirect to Google OAuth URL
         window.location.href = response.data.url;
       } else {
-        setError('Failed to initiate Google login. Please try again.');
+        setError("Failed to initiate Google login. Please try again.");
       }
     } catch {
-      setError('An unexpected error occurred with Google login. Please try again.');
+      setError("An unexpected error occurred with Google login. Please try again.");
     } finally {
       setGoogleLoading(false);
     }
@@ -71,37 +88,28 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center mb-6 text-black">Login</h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormInput
+            id="email"
+            type="email"
+            label="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            error={fieldErrors.email}
+          />
+
+          <PasswordInput
+            id="password"
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            error={fieldErrors.password}
+          />
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-md">
@@ -114,7 +122,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
@@ -151,7 +159,7 @@ export default function LoginPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          {googleLoading ? 'Connecting to Google...' : 'Continue with Google'}
+          {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
         <div className="mt-4 text-center space-y-2">
@@ -162,7 +170,7 @@ export default function LoginPage() {
             Forgot password?
           </Link>
           <p className="text-sm text-gray-600">
-            Don&apos;t have an account?{' '}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="text-blue-600 hover:text-blue-800 underline">
               Register
             </Link>

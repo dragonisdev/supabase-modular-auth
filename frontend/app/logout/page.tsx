@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { api } from '@/lib/api';
-import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
+import { api } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -13,9 +13,9 @@ export default function LogoutPage() {
         await api.logout();
       } catch (err) {
         // Even if logout fails, redirect to login
-        console.error('Logout error:', err);
+        console.error("Logout error:", err);
       } finally {
-        router.push('/login');
+        router.push("/login");
       }
     };
 

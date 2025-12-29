@@ -1,26 +1,27 @@
 {
-  "name": "backend",
+  "name": "@supabase-modular-auth/backend",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "description": "Stateless backend authentication API using Supabase Auth",
-  "main": "dist/index.js",
-  "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "lint": "oxlint --type-aware .",
-    "lint:fix": "oxlint --fix --type-aware .",
-    "type-check": "tsc --noEmit"
-  },
   "keywords": [
     "auth",
-    "supabase",
     "express",
+    "supabase",
     "typescript"
   ],
   "license": "ISC",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "lint": "oxlint --type-aware .",
+    "lint:fix": "oxlint --fix --type-aware .",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
+    "@supabase-modular-auth/types": "workspace:*",
     "@supabase/supabase-js": "^2.89.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -31,7 +32,7 @@
     "typescript": "catalog:",
     "uuid": "^13.0.0",
     "xss": "^1.0.15",
-    "zod": "^4.2.1",
+    "zod": "catalog:",
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
@@ -41,8 +42,8 @@
     "@types/express-serve-static-core": "^5.1.0",
     "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
-    "oxlint": "^1.35.0",
-    "oxlint-tsgolint": "^0.10.0",
-    "ts-node-dev": "^2.0.0"
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tsx": "^4.21.0"
   }
 }

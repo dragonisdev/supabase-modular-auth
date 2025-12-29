@@ -10,9 +10,7 @@
     "incremental": true,
     "isolatedDeclarations": true,
     "isolatedModules": true,
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
@@ -34,6 +32,9 @@
     },
     {
       "path": "./frontend/tsconfig.json"
+    },
+    {
+      "path": "./types/tsconfig.json"
     }
   ]
 }

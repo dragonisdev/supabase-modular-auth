@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function AuthErrorPage() {
   return (
@@ -23,19 +23,19 @@ export default function AuthErrorPage() {
             </svg>
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Failed</h1>
-        
+
         <p className="text-gray-600 mb-6">
           There was an error during the authentication process. This could be due to:
         </p>
-        
+
         <ul className="text-sm text-gray-500 text-left mb-6 space-y-1">
           <li>• You cancelled the authentication</li>
           <li>• Network connection issues</li>
           <li>• Temporary service unavailability</li>
         </ul>
-        
+
         <div className="space-y-3">
           <Link
             href="/login"
@@ -43,7 +43,7 @@ export default function AuthErrorPage() {
           >
             Try Again
           </Link>
-          
+
           <Link
             href="/"
             className="block w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
