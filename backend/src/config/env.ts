@@ -5,28 +5,28 @@ dotenv.config();
 
 const envSchema = z.object({
   // Supabase
-  SUPABASE_URL: z.string().url(),
+  SUPABASE_URL: z.url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   
   // Server
-  PORT: z.string().regex(/^\d+$/).transform(Number).default('3000'),
+  PORT: z.string().regex(/^\d+$/).transform(Number).default(3000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   
   // URLs
-  BACKEND_URL: z.string().url().optional(),
-  FRONTEND_URL: z.string().url(),
+  BACKEND_URL: z.url().optional(),
+  FRONTEND_URL: z.url(),
   
   // Cookies
   COOKIE_DOMAIN: z.string().default('localhost'),
-  COOKIE_SECURE: z.string().transform(val => val === 'true').default('false'),
+  COOKIE_SECURE: z.string().transform(val => val === 'true').default(false),
   COOKIE_SAME_SITE: z.enum(['strict', 'lax', 'none']).default('lax'),
   
   // Rate Limiting
-  RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default('900000'), // 15 minutes
-  RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('100'), // General endpoints
-  AUTH_RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('5'), // Auth endpoints
-  STRICT_RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default('20'), // Stricter for production
+  RATE_LIMIT_WINDOW_MS: z.string().regex(/^\d+$/).transform(Number).default(900000), // 15 minutes
+  RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default(100), // General endpoints
+  AUTH_RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default(5), // Auth endpoints
+  STRICT_RATE_LIMIT_MAX_REQUESTS: z.string().regex(/^\d+$/).transform(Number).default(20), // Stricter for production
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

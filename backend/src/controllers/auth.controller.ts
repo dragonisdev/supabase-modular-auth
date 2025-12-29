@@ -9,7 +9,7 @@ import {
 } from '../validators/auth.validator';
 import { AuthError, EmailNotVerifiedError, ValidationError, ErrorCode } from '../utils/errors';
 import { setAuthCookie, clearAuthCookie, successResponse } from '../utils/response';
-import { SecurityLogger } from '../utils/logger';
+import * as SecurityLogger from '../utils/logger';
 import config from '../config/env';
 
 export class AuthController {
@@ -22,7 +22,7 @@ export class AuthController {
       // Validate input
       const validation = registerSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid registration data', validation.error.errors);
+        throw new ValidationError('Invalid registration data', validation.error);
       }
 
       const { email, password, username } = validation.data;
@@ -143,7 +143,7 @@ export class AuthController {
       // Validate input
       const validation = loginSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid login data', validation.error.errors);
+        throw new ValidationError('Invalid login data', validation.error);
       }
 
       const { email, password } = validation.data;
@@ -274,7 +274,7 @@ export class AuthController {
       clearAuthCookie(res);
 
       successResponse(res, 'Logout successful');
-    } catch (error) {
+    } catch (_error) {
       // Even if everything fails, try to clear the cookie
       clearAuthCookie(res);
       successResponse(res, 'Logout successful');
@@ -290,7 +290,7 @@ export class AuthController {
       // Validate input
       const validation = forgotPasswordSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid email', validation.error.errors);
+        throw new ValidationError('Invalid email', validation.error);
       }
 
       const { email } = validation.data;
@@ -328,7 +328,7 @@ export class AuthController {
       // Validate input
       const validation = resetPasswordSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError('Invalid password', validation.error.errors);
+        throw new ValidationError('Invalid password', validation.error);
       }
 
       const { password, token } = validation.data;
@@ -436,7 +436,7 @@ export class AuthController {
 
       // Redirect to frontend
       res.redirect(`${config.FRONTEND_URL}/dashboard`);
-    } catch (error) {
+    } catch (_error) {
       // Redirect to frontend with error
       res.redirect(`${config.FRONTEND_URL}/auth/error`);
     }

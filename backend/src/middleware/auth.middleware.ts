@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthError } from '../utils/errors';
 import SupabaseService from '../services/supabase.service';
-import { SecurityLogger } from '../utils/logger';
+import * as SecurityLogger from '../utils/logger';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

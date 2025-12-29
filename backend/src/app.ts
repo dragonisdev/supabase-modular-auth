@@ -2,7 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
-import rateLimit from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 import config from './config/env';
 import authRoutes from './routes/auth.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
