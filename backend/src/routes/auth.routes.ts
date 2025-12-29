@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { AuthController } from '../controllers/auth.controller';
-import { rateLimit } from 'express-rate-limit';
-import config from '../config/env';
+import { AuthController } from '../controllers/auth.controller.js';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import config from '../config/env.js';
 
 const router = Router();
 const authController = new AuthController();
@@ -14,7 +14,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   // Each IP address gets its own limit - more robust IP detection
   keyGenerator: (req) => {
-    return req.ip || req.socket.remoteAddress || 'unknown';
+    return ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown');
   },
   // Skip rate limiting for localhost in development
   skip: (req) => {

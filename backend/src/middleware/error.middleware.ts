@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError, ErrorCode } from '../utils/errors';
-import * as SecurityLogger from '../utils/logger';
+import { AppError, ErrorCode } from '../utils/errors.js';
+import * as SecurityLogger from '../utils/logger.js';
 
 export interface ErrorResponse {
   success: false;

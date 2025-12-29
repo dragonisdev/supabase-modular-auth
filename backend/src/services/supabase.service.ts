@@ -1,21 +1,21 @@
-  import { createClient, SupabaseClient } from '@supabase/supabase-js';
-  import config from '../config/env';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import config from '../config/env.js';
 
-  class SupabaseService {
-    // Create a client for admin operations (service role)
-    public static getAdminClient(): SupabaseClient {
-      return createClient(
-        config.SUPABASE_URL,
-        config.SUPABASE_SERVICE_ROLE_KEY,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-            detectSessionInUrl: false
-          }
+class SupabaseService {
+  // Create a client for admin operations (service role)
+  public static getAdminClient(): SupabaseClient {
+    return createClient(
+      config.SUPABASE_URL,
+      config.SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
         }
-      );
-    }
+      }
+    );
+  }
   private static instance: SupabaseClient;
 
   private constructor() {}

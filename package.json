@@ -1,0 +1,13 @@
+{
+  "name": "cc-saas",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r --parallel build",
+    "start": "pnpm -r --parallel start",
+    "lint": "pnpm -r --parallel lint",
+    "lint:fix": "pnpm -r --parallel lint:fix",
+    "type-check": "pnpm -r --parallel type-check"
+  },
+  "license": "ISC"
+}

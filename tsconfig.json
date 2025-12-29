@@ -1,18 +1,39 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "nodenext",
-    "lib": ["ESNext"],
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": true,
+    "allowArbitraryExtensions": true,
+    "allowSyntheticDefaultImports": true,
+    "disableSizeLimit": true,
+    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
+    "incremental": true,
+    "isolatedDeclarations": true,
+    "isolatedModules": true,
+    "lib": [
+      "ESNext"
+    ],
+    "module": "nodenext",
     "moduleResolution": "nodenext",
-    "allowSyntheticDefaultImports": true
+    "outDir": "./dist",
+    "noErrorTruncation": true,
+    "noUnusedLocals": true,
+    "preserveWatchOutput": true,
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "rootDir": "./",
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "verbatimModuleSyntax": true
   },
-  "include": ["backend/src/**/*", "frontend/src/**/*"],
-  "exclude": ["**/node_modules", "**/dist", "**/.next"]
+  "files": [],
+  "references": [
+    {
+      "path": "./backend/tsconfig.json"
+    },
+    {
+      "path": "./frontend/tsconfig.json"
+    }
+  ]
 }

@@ -24,6 +24,22 @@ A modular Supabase authentication system: stateless backend API plus a minimal N
 3) Protected data fetched via `/auth/me`; 401 responses drive redirects to login.
 4) OAuth handled entirely server-side; frontend just redirects to the provided URL.
 
+## Getting Started
+1. Clone the repo:
+```bash
+git clone https://github.com/dragonisdev/supabase-modular-auth.git
+cd supabase-modular-auth
+```
+2. Install dependencies:
+```bash
+pnpm i --frozen-lockfile
+```
+3. Configure environment variables for both backend and frontend (see below).
+4. Start the development servers:
+```bash
+pnpm dev
+```
+
 ## Environment Configuration
 Tune these to point the backend at your Supabase project. See [backend/backend.md](backend/backend.md) for details.
 

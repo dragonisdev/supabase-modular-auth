@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { AuthError } from '../utils/errors';
-import SupabaseService from '../services/supabase.service';
-import * as SecurityLogger from '../utils/logger';
+import { AuthError } from '../utils/errors.js';
+import SupabaseService from '../services/supabase.service.js';
+import * as SecurityLogger from '../utils/logger.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

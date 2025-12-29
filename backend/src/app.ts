@@ -2,11 +2,11 @@ import express, { Application, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
-import { rateLimit } from 'express-rate-limit';
-import config from './config/env';
-import authRoutes from './routes/auth.routes';
-import { errorHandler, notFoundHandler } from './middleware/error.middleware';
-import { requestIdMiddleware } from './middleware/request-id.middleware';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import config from './config/env.js';
+import authRoutes from './routes/auth.routes.js';
+import { errorHandler, notFoundHandler } from './middleware/error.middleware.js';
+import { requestIdMiddleware } from './middleware/request-id.middleware.js';
 
 /**
  * Express Application Setup
@@ -81,7 +81,7 @@ class App {
       // Each IP address gets its own limit
       keyGenerator: (req) => {
         // Use forwarded IP if behind proxy, fallback to connection IP
-        return req.ip || req.socket.remoteAddress || 'unknown';
+        return ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown');
       },
       // Skip rate limiting for certain IPs (like health check services)
       skip: (req) => {

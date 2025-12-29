@@ -16,7 +16,7 @@ A Next.js 14 authentication frontend that communicates with a backend API.
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm i --frozen-lockfile
 ```
 
 2. Create `.env.local` file:
@@ -31,7 +31,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
 
 4. Start the development server:
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The app will be available at `http://localhost:3001`

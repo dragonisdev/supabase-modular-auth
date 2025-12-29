@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import config from '../config/env';
+import config from '../config/env.js';
 
 export interface SuccessResponse {
   success: true;

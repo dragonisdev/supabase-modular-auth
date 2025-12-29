@@ -5,9 +5,9 @@ Express.js + TypeScript + Supabase Auth. Stateless, secure, production-ready.
 ## Quick Start
 
 ```bash
-npm install
+pnpm i --frozen-lockfile
 cp .env.example .env  # Edit with your Supabase credentials
-npm run dev           # http://localhost:3000
+pnpm dev              # http://localhost:3000
 ```
 
 Test: `curl http://localhost:3000/health`
@@ -93,9 +93,9 @@ router.post('/endpoint', authLimiter, (req, res, next) =>
 ## Commands
 
 ```bash
-npm run dev          # Dev server
-npm run build        # Production build
-npm run type-check   # Check types
+pnpm dev        # Dev server
+pnpm build      # Production build
+pnpm type-check # Check types
 ```
 
 ## Deploy

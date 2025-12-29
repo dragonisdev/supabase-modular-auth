@@ -1,6 +1,8 @@
 {
-  "name": "cc-saas-backend",
+  "name": "backend",
   "version": "1.0.0",
+  "private": true,
+  "type": "module",
   "description": "Stateless backend authentication API using Supabase Auth",
   "main": "dist/index.js",
   "scripts": {
@@ -26,7 +28,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
-    "typescript": "^5.9.3",
+    "typescript": "catalog:",
     "uuid": "^13.0.0",
     "xss": "^1.0.15",
     "zod": "^4.2.1",
@@ -36,7 +38,8 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/node": "^20",
+    "@types/express-serve-static-core": "^5.1.0",
+    "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
     "oxlint": "^1.35.0",
     "oxlint-tsgolint": "^0.10.0",

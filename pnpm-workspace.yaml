@@ -1,0 +1,13 @@
+packages:
+  - backend
+  - frontend
+
+catalog:
+  '@types/node': ^20
+  typescript: ^5
+
+lockfileIncludeTarballUrl: true
+
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
