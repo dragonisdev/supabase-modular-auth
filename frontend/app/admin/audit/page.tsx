@@ -27,12 +27,12 @@ export default function AdminAuditPage() {
     setAction(e.target.value);
   }, []);
 
-  const loadLogs = useCallback(async () => {
+  const loadLogs = useCallback(async (params: { page: number; limit: number; action?: string }) => {
     setLoading(true);
     const response = await api.admin.listAuditLogs({
-      page,
-      limit,
-      action: action || undefined,
+      page: params.page,
+      limit: params.limit,
+      action: params.action,
     });
 
     if (!response.success || !response.data) {
@@ -45,20 +45,32 @@ export default function AdminAuditPage() {
     setTotalPages(response.data.totalPages);
     setError("");
     setLoading(false);
-  }, [action, limit, page]);
+  }, []);
 
   const handleApply = useCallback(() => {
     setPage(1);
-    void loadLogs();
-  }, [loadLogs]);
+    void loadLogs({ page: 1, limit, action: action || undefined });
+  }, [action, limit, loadLogs]);
 
   const handlePrevPage = useCallback(() => {
-    setPage((p) => Math.max(1, p - 1));
-  }, []);
+    setPage((p) => {
+      const nextPage = Math.max(1, p - 1);
+      if (nextPage !== p) {
+        void loadLogs({ page: nextPage, limit, action: action || undefined });
+      }
+      return nextPage;
+    });
+  }, [action, limit, loadLogs]);
 
   const handleNextPage = useCallback(() => {
-    setPage((p) => Math.min(totalPages, p + 1));
-  }, [totalPages]);
+    setPage((p) => {
+      const nextPage = Math.min(totalPages, p + 1);
+      if (nextPage !== p) {
+        void loadLogs({ page: nextPage, limit, action: action || undefined });
+      }
+      return nextPage;
+    });
+  }, [action, limit, loadLogs, totalPages]);
 
   useEffect(() => {
     const verifyAdmin = async () => {
@@ -76,12 +88,12 @@ export default function AdminAuditPage() {
       }
 
       setIsAdmin(true);
-      await loadLogs();
+      await loadLogs({ page: 1, limit, action: action || undefined });
       setAccessChecked(true);
     };
 
     void verifyAdmin();
-  }, [loadLogs, router]);
+  }, [action, limit, loadLogs, router]);
 
   if (!accessChecked) {
     return (

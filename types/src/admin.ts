@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const adminRoleSchema = z.enum(["admin", "user"]);
-const adminEmailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
 
 export const adminListUsersQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
@@ -10,14 +9,32 @@ export const adminListUsersQuerySchema = z.object({
   sortBy: z.enum(["created_at", "email", "last_sign_in_at"]).optional().default("created_at"),
   sortDirection: z.enum(["asc", "desc"]).optional().default("desc"),
   filterRole: adminRoleSchema.optional(),
-  filterBanned: z.coerce.boolean().optional(),
+  filterBanned: z
+    .preprocess((value) => {
+      if (typeof value === "boolean") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === "true") {
+          return true;
+        }
+
+        if (normalized === "false") {
+          return false;
+        }
+      }
+
+      return value;
+    }, z.boolean())
+    .optional(),
 });
 
 export const adminCreateUserSchema = z.object({
   email: z
-    .string()
+    .email("Please enter a valid email address (example: user@domain.com).")
     .trim()
-    .regex(adminEmailRegex, "Please enter a valid email address (example: user@domain.com).")
     .transform((val) => val.toLowerCase()),
   password: z
     .string()
@@ -35,9 +52,8 @@ export const adminCreateUserSchema = z.object({
 
 export const adminUpdateUserSchema = z.object({
   email: z
-    .string()
+    .email("Please enter a valid email address (example: user@domain.com).")
     .trim()
-    .regex(adminEmailRegex, "Please enter a valid email address (example: user@domain.com).")
     .transform((val) => val.toLowerCase().trim())
     .optional(),
   username: z

@@ -82,6 +82,8 @@ export function getErrorMessage(response: ApiResponse): string {
       return "Invalid email or password.";
     case "UNAUTHORIZED":
       return response.message || "Unauthorized.";
+    case "FORBIDDEN":
+      return response.message || "You do not have permission to perform this action.";
     case "EMAIL_NOT_VERIFIED":
       return "Please verify your email before logging in.";
     case "USER_EXISTS":

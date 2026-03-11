@@ -1,4 +1,4 @@
-# Supabase Auth Starter (Backend API + Next.js rontend)
+# Supabase Auth Starter (Backend API + Next.js frontend)
 
 A modular Supabase authentication system: stateless backend API plus a minimal Next.js App Router frontend. Point the backend to your own Supabase project via environment variables, and you get a drop-in auth service (email/password, verification, reset, OAuth) backed by HttpOnly cookies. The frontend is intentionally thin—it only talks to the backend and never touches Supabase directly.
 

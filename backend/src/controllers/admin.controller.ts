@@ -17,7 +17,8 @@ import {
   updateUserBodySchema,
 } from "../validators/admin.validator.js";
 
-const MAX_USER_SCAN = 2000;
+const USER_LIST_PAGE_SIZE = 100;
+const USER_CACHE_TTL_MS = 60_000;
 
 type UserAppMetadata = {
   role?: string;
@@ -37,6 +38,94 @@ type UserRecord = {
   user_metadata?: { username?: string; [key: string]: unknown };
   app_metadata?: UserAppMetadata;
 };
+
+type UserListResponseData = {
+  users: UserRecord[];
+  nextPage: number | null;
+  lastPage: number;
+  total: number;
+};
+
+class UserDirectoryCache {
+  private usersById = new Map<string, UserRecord>();
+  private nextPage = 1;
+  private total = 0;
+  private scanComplete = false;
+  private lastRefreshAt = 0;
+  private fetchInFlight: Promise<void> | null = null;
+
+  private invalidateIfExpired(): void {
+    if (Date.now() - this.lastRefreshAt <= USER_CACHE_TTL_MS) {
+      return;
+    }
+
+    this.usersById.clear();
+    this.nextPage = 1;
+    this.total = 0;
+    this.scanComplete = false;
+    this.lastRefreshAt = 0;
+  }
+
+  private async fetchNextPage(): Promise<void> {
+    if (this.scanComplete) {
+      return;
+    }
+
+    if (this.fetchInFlight) {
+      await this.fetchInFlight;
+      return;
+    }
+
+    this.fetchInFlight = (async () => {
+      const adminClient = SupabaseService.getAdminClient();
+      const { data, error } = await adminClient.auth.admin.listUsers({
+        page: this.nextPage,
+        perPage: USER_LIST_PAGE_SIZE,
+      });
+
+      if (error) {
+        throw new AuthError("Unable to list users", ErrorCode.SERVICE_UNAVAILABLE);
+      }
+
+      const pageData = data as UserListResponseData;
+      this.total = pageData.total;
+
+      for (const user of pageData.users) {
+        this.usersById.set(user.id, user);
+      }
+
+      if (pageData.nextPage === null || this.nextPage >= pageData.lastPage) {
+        this.scanComplete = true;
+      } else {
+        this.nextPage = pageData.nextPage;
+      }
+
+      this.lastRefreshAt = Date.now();
+    })();
+
+    try {
+      await this.fetchInFlight;
+    } finally {
+      this.fetchInFlight = null;
+    }
+  }
+
+  async getAllUsersCached(): Promise<{ users: UserRecord[]; total: number }> {
+    this.invalidateIfExpired();
+
+    if (!this.scanComplete) {
+      await this.fetchNextPage();
+      return this.getAllUsersCached();
+    }
+
+    return {
+      users: Array.from(this.usersById.values()),
+      total: this.total,
+    };
+  }
+}
+
+const userDirectoryCache = new UserDirectoryCache();
 
 const normalizeBanState = (
   metadata: UserAppMetadata | undefined,
@@ -164,33 +253,6 @@ export class AdminController {
     };
   }
 
-  private async fetchAllUsers(): Promise<UserRecord[]> {
-    const adminClient = SupabaseService.getAdminClient();
-    const perPage = 100;
-
-    const fetchPage = async (page: number, acc: UserRecord[]): Promise<UserRecord[]> => {
-      if (acc.length >= MAX_USER_SCAN) {
-        return acc;
-      }
-
-      const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
-      if (error) {
-        throw new AuthError("Unable to list users", ErrorCode.SERVICE_UNAVAILABLE);
-      }
-
-      const batch = (data?.users || []) as UserRecord[];
-      const nextAcc = [...acc, ...batch];
-
-      if (batch.length < perPage) {
-        return nextAcc;
-      }
-
-      return fetchPage(page + 1, nextAcc);
-    };
-
-    return fetchPage(1, []);
-  }
-
   private async updateBanState(
     userId: string,
     payload: { banned: boolean; reason?: string | null; expiresAt?: string | null },
@@ -228,7 +290,36 @@ export class AdminController {
       }
 
       const { page, limit, search, sortBy, sortDirection, filterRole, filterBanned } = parsed.data;
-      const allUsers = await this.fetchAllUsers();
+
+      const needsFullDataset =
+        !!search ||
+        !!filterRole ||
+        typeof filterBanned === "boolean" ||
+        sortBy !== "created_at" ||
+        sortDirection !== "desc";
+
+      if (!needsFullDataset) {
+        const adminClient = SupabaseService.getAdminClient();
+        const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage: limit });
+        if (error || !data) {
+          throw new AuthError("Unable to list users", ErrorCode.SERVICE_UNAVAILABLE);
+        }
+
+        const pageData = data as UserListResponseData;
+        const total = pageData.total;
+        const totalPages = Math.max(1, pageData.lastPage);
+
+        successResponse(res, "Users listed", {
+          items: pageData.users.map(mapAdminUser),
+          page,
+          limit,
+          total,
+          totalPages,
+        });
+        return;
+      }
+
+      const { users: allUsers } = await userDirectoryCache.getAllUsersCached();
       const mappedUsers = allUsers.map(mapAdminUser);
       const filteredUsers = filterUsers(mappedUsers, { search, filterRole, filterBanned });
       const sortedUsers = sortUsers(filteredUsers, sortBy, sortDirection);
@@ -370,6 +461,10 @@ export class AdminController {
         throw new ValidationError("You cannot remove your own admin role");
       }
 
+      if (id === actor.actorId && parsed.data.banned === true) {
+        throw new ValidationError("You cannot ban your own account");
+      }
+
       if (
         parsed.data.role !== undefined &&
         parsed.data.isAdmin !== undefined &&
@@ -393,6 +488,24 @@ export class AdminController {
         app_metadata?: Record<string, unknown>;
       } = {};
 
+      let existingUser: UserRecord | null = null;
+      const getExistingUser = async (): Promise<UserRecord> => {
+        if (existingUser) {
+          return existingUser;
+        }
+
+        const adminClient = SupabaseService.getAdminClient();
+        const { data: existingData, error: existingError } =
+          await adminClient.auth.admin.getUserById(id);
+
+        if (existingError || !existingData.user) {
+          throw new AuthError("User not found", ErrorCode.USER_NOT_FOUND);
+        }
+
+        existingUser = existingData.user as UserRecord;
+        return existingUser;
+      };
+
       if (parsed.data.email) {
         updatePayload.email = parsed.data.email;
       }
@@ -402,7 +515,10 @@ export class AdminController {
       }
 
       if (parsed.data.username !== undefined) {
+        const currentUser = await getExistingUser();
+        const existingUserMetadata = (currentUser.user_metadata || {}) as Record<string, unknown>;
         updatePayload.user_metadata = {
+          ...existingUserMetadata,
           username: parsed.data.username,
         };
       }
@@ -414,15 +530,8 @@ export class AdminController {
         parsed.data.banReason !== undefined ||
         parsed.data.banExpiresAt !== undefined
       ) {
-        const adminClient = SupabaseService.getAdminClient();
-        const { data: existingData, error: existingError } =
-          await adminClient.auth.admin.getUserById(id);
-
-        if (existingError || !existingData.user) {
-          throw new AuthError("User not found", ErrorCode.USER_NOT_FOUND);
-        }
-
-        const existingAppMetadata = (existingData.user.app_metadata || {}) as UserAppMetadata;
+        const currentUser = await getExistingUser();
+        const existingAppMetadata = currentUser.app_metadata || {};
         const derivedIsAdmin =
           parsed.data.isAdmin !== undefined
             ? parsed.data.isAdmin

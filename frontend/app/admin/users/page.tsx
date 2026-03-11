@@ -40,6 +40,46 @@ export default function AdminUsersPage() {
 
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
 
+  const getCurrentUserListFilters = useCallback(() => {
+    return {
+      search: search || undefined,
+      filterRole: filterRole || undefined,
+      filterBanned: filterBanned === "" ? undefined : filterBanned === "true",
+    };
+  }, [search, filterRole, filterBanned]);
+
+  const loadUsers = useCallback(
+    async (params: {
+      page: number;
+      limit: number;
+      search?: string;
+      filterRole?: "user" | "admin";
+      filterBanned?: boolean;
+    }) => {
+      setLoading(true);
+      setError("");
+
+      const response = await api.admin.listUsers({
+        page: params.page,
+        limit: params.limit,
+        search: params.search,
+        filterRole: params.filterRole,
+        filterBanned: params.filterBanned,
+      });
+
+      if (!response.success || !response.data) {
+        setError(getErrorMessage(response));
+        setLoading(false);
+        return;
+      }
+
+      setUsers(response.data.items);
+      setTotalPages(response.data.totalPages);
+      setLoading(false);
+    },
+    [],
+  );
+
   const handleBack = useCallback(() => {
     router.push("/admin");
   }, [router]);
@@ -122,18 +162,35 @@ export default function AdminUsersPage() {
     }));
   }, []);
 
-  const handleLimitChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLimit(Number(e.target.value));
-    setPage(1);
-  }, []);
+  const handleLimitChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const nextLimit = Number(e.target.value);
+      setLimit(nextLimit);
+      setPage(1);
+      void loadUsers({ page: 1, limit: nextLimit, ...getCurrentUserListFilters() });
+    },
+    [getCurrentUserListFilters, loadUsers],
+  );
 
   const handlePrevPage = useCallback(() => {
-    setPage((p) => Math.max(1, p - 1));
-  }, []);
+    setPage((p) => {
+      const nextPage = Math.max(1, p - 1);
+      if (nextPage !== p) {
+        void loadUsers({ page: nextPage, limit, ...getCurrentUserListFilters() });
+      }
+      return nextPage;
+    });
+  }, [getCurrentUserListFilters, limit, loadUsers]);
 
   const handleNextPage = useCallback(() => {
-    setPage((p) => Math.min(totalPages, p + 1));
-  }, [totalPages]);
+    setPage((p) => {
+      const nextPage = Math.min(totalPages, p + 1);
+      if (nextPage !== p) {
+        void loadUsers({ page: nextPage, limit, ...getCurrentUserListFilters() });
+      }
+      return nextPage;
+    });
+  }, [getCurrentUserListFilters, limit, loadUsers, totalPages]);
 
   const isoToLocalDateTime = useCallback((iso: string | null): string => {
     if (!iso) {
@@ -166,29 +223,6 @@ export default function AdminUsersPage() {
     return parsed.toISOString();
   }, []);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    const response = await api.admin.listUsers({
-      page,
-      limit,
-      search: search || undefined,
-      filterRole: filterRole || undefined,
-      filterBanned: filterBanned === "" ? undefined : filterBanned === "true",
-    });
-
-    if (!response.success || !response.data) {
-      setError(getErrorMessage(response));
-      setLoading(false);
-      return;
-    }
-
-    setUsers(response.data.items);
-    setTotalPages(response.data.totalPages);
-    setLoading(false);
-  }, [page, limit, search, filterRole, filterBanned]);
-
   useEffect(() => {
     const verifyAdmin = async () => {
       const me = await api.getMe();
@@ -205,17 +239,17 @@ export default function AdminUsersPage() {
       }
 
       setIsAdmin(true);
-      await loadUsers();
+      await loadUsers({ page: 1, limit, ...getCurrentUserListFilters() });
       setAccessChecked(true);
     };
 
     void verifyAdmin();
-  }, [loadUsers, router]);
+  }, [getCurrentUserListFilters, limit, loadUsers, router]);
 
   const refresh = useCallback(async () => {
     setSelected({});
-    await loadUsers();
-  }, [loadUsers]);
+    await loadUsers({ page, limit, ...getCurrentUserListFilters() });
+  }, [getCurrentUserListFilters, limit, loadUsers, page]);
 
   const createUser = useCallback(async () => {
     setError("");
@@ -410,8 +444,8 @@ export default function AdminUsersPage() {
 
   const handleApplyFilters = useCallback(() => {
     setPage(1);
-    void loadUsers();
-  }, [loadUsers]);
+    void loadUsers({ page: 1, limit, ...getCurrentUserListFilters() });
+  }, [getCurrentUserListFilters, limit, loadUsers]);
 
   const handleBulkBan = useCallback(() => {
     void runBulkAction("ban");
