@@ -5,7 +5,7 @@
   "license": "ISC",
   "type": "module",
   "scripts": {
-    "build": "pnpm -r --parallel build",
+    "build": "pnpm --filter types build && pnpm --filter backend build && pnpm --filter frontend build",
     "dev": "pnpm -r --parallel dev",
     "format": "oxfmt",
     "lint": "oxlint",
