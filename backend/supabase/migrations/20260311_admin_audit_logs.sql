@@ -83,9 +83,10 @@ $$;
 revoke all on function public.admin_purge_audit_logs(integer) from public, anon, authenticated;
 grant execute on function public.admin_purge_audit_logs(integer) to service_role;
 
+-- ENABLE LATER
 -- Schedule purge of old audit logs (older than 180 days) every 6 hours, requires pg_cron extension.
-select cron.schedule(
-  'admin-audit-retention',
-  '0 */6 * * *',
-  $$select public.admin_purge_audit_logs(180);$$
-);
+-- select cron.schedule(
+--   'admin-audit-retention',
+--   '0 */6 * * *',
+--   $$select public.admin_purge_audit_logs(180);$$
+-- );
