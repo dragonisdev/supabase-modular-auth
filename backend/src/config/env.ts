@@ -1,7 +1,7 @@
-import dotenv from "dotenv";
+import { config as dotenvxConfig } from "@dotenvx/dotenvx";
 import { z } from "zod";
 
-dotenv.config();
+dotenvxConfig();
 
 const envSchema = z.object({
   // Supabase

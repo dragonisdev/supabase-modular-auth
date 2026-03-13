@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
 import { registerFormSchema } from "@supabase-modular-auth/types";
-import { PasswordInput, FormInput } from "@/components";
 import Link from "next/link";
+import React, { useCallback, useState, type ChangeEvent, type SyntheticEvent } from "react";
+
+import { PasswordInput, FormInput } from "@/components";
+import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -20,58 +21,61 @@ export default function RegisterPage() {
   const passwordsMatch = password === confirmPassword || confirmPassword === "";
   const showMismatchError = !passwordsMatch && confirmPassword.length > 0;
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setFieldErrors({});
-    setSuccess(false);
+  const handleSubmit = useCallback(
+    async (e: SyntheticEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setLoading(true);
+      setError("");
+      setFieldErrors({});
+      setSuccess(false);
 
-    const validation = registerFormSchema.safeParse({
-      email,
-      username: username || undefined,
-      password,
-      confirmPassword,
-    });
+      const validation = registerFormSchema.safeParse({
+        email,
+        username: username || undefined,
+        password,
+        confirmPassword,
+      });
 
-    if (!validation.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of validation.error.issues) {
-        const field = issue.path[0]?.toString() || "general";
-        if (!errors[field]) {
-          errors[field] = issue.message;
+      if (!validation.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of validation.error.issues) {
+          const field = issue.path[0]?.toString() || "general";
+          if (!errors[field]) {
+            errors[field] = issue.message;
+          }
         }
+        setFieldErrors(errors);
+        setLoading(false);
+        return;
       }
-      setFieldErrors(errors);
-      setLoading(false);
-      return;
-    }
 
-    try {
-      const response = await api.register(email, password, username);
+      try {
+        const response = await api.register(email, password, username);
 
-      if (response.success) {
-        setSuccess(true);
-        setEmail("");
-        setUsername("");
-        setPassword("");
-        setConfirmPassword("");
-      } else {
-        // Parse field-specific errors from backend
-        const backendFieldErrors = parseFieldErrors(response.details);
-        if (Object.keys(backendFieldErrors).length > 0) {
-          setFieldErrors(backendFieldErrors);
+        if (response.success) {
+          setSuccess(true);
+          setEmail("");
+          setUsername("");
+          setPassword("");
+          setConfirmPassword("");
+        } else {
+          // Parse field-specific errors from backend
+          const backendFieldErrors = parseFieldErrors(response.details);
+          if (Object.keys(backendFieldErrors).length > 0) {
+            setFieldErrors(backendFieldErrors);
+          }
+          setError(getErrorMessage(response));
         }
-        setError(getErrorMessage(response));
+      } catch {
+        setError("An unexpected error occurred. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [confirmPassword, email, password, username],
+  );
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     setGoogleLoading(true);
     setError("");
 
@@ -89,18 +93,37 @@ export default function RegisterPage() {
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, []);
+
+  const handleEmailChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handleUsernameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }, []);
+
+  const handleConfirmPasswordChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setConfirmPassword(e.target.value);
+  }, []);
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">Check Your Email</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="mb-4 text-2xl font-bold text-green-600">Check Your Email</h2>
+            <p className="mb-6 text-gray-600">
               Please check your email to verify your account before logging in.
             </p>
-            <Link href="/login" className="text-blue-600 hover:text-blue-800 underline">
+            <Link
+              href="/login"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
               Go to Login
             </Link>
           </div>
@@ -110,17 +133,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-black">Register</h1>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h1 className="mb-6 text-center text-2xl font-bold text-black">Register</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
           <FormInput
             id="email"
             type="email"
             label="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
             required
             disabled={loading}
             error={fieldErrors.email}
@@ -131,7 +157,7 @@ export default function RegisterPage() {
             type="text"
             label="Username"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={handleUsernameChange}
             required
             minLength={3}
             pattern="[a-zA-Z0-9_\-]+"
@@ -144,7 +170,7 @@ export default function RegisterPage() {
             id="password"
             label="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
             required
             minLength={8}
             disabled={loading}
@@ -155,7 +181,7 @@ export default function RegisterPage() {
             id="confirmPassword"
             label="Confirm Password"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={handleConfirmPasswordChange}
             required
             minLength={8}
             disabled={loading}
@@ -164,7 +190,7 @@ export default function RegisterPage() {
           />
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
@@ -172,7 +198,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
             {loading ? "Registering..." : "Register"}
           </button>
@@ -183,7 +209,7 @@ export default function RegisterPage() {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or</span>
+            <span className="bg-white px-2 text-gray-500">Or</span>
           </div>
         </div>
 
@@ -191,9 +217,12 @@ export default function RegisterPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading || loading}
-          className="w-full mb-4 py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+          >
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -214,9 +243,12 @@ export default function RegisterPage() {
           {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
-        <p className="text-center text-sm text-gray-600 mt-4">
+        <p className="mt-4 text-center text-sm text-gray-600">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 hover:text-blue-800 underline">
+          <Link
+            href="/login"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
             Login
           </Link>
         </p>

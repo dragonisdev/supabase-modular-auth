@@ -1,13 +1,17 @@
-# Supabase Auth Starter (Backend API + Next.js Frontend)
+# Supabase Auth Starter (Backend API + Next.js frontend)
 
 A modular Supabase authentication system: stateless backend API plus a minimal Next.js App Router frontend. Point the backend to your own Supabase project via environment variables, and you get a drop-in auth service (email/password, verification, reset, OAuth) backed by HttpOnly cookies. The frontend is intentionally thin—it only talks to the backend and never touches Supabase directly.
 
+For deployment help, see [deployment.md](deployment.md).  
+For frontend details, see [frontend/frontend.md](frontend/frontend.md).  
+For backend details, see [backend/backend.md](backend/backend.md).
+
 ---
 
-## What's Inside
+## What's inside
 
 - Backend: Node.js + TypeScript + Express + Supabase Auth. Stateless JWT, HttpOnly cookies, Zod validation, Helmet, CORS, rate limiting.
-- Frontend: Next.js 14 (App Router) + TypeScript + Tailwind. Uses fetch with `credentials: 'include'`; no Supabase client.
+- Frontend: Next.js 16 (App Router) + TypeScript + Tailwind. Uses fetch with `credentials: 'include'`; no Supabase client.
 - Monorepo layout: backend API in `backend/`, frontend in `frontend/`, shared guidance in repo root.
 
 ## Features
@@ -19,15 +23,16 @@ A modular Supabase authentication system: stateless backend API plus a minimal N
 - HttpOnly cookie-based auth; frontend never sees tokens
 - Rate limiting, security headers, CORS, non-enumerating errors
 - Type-safe validation and responses
+- Admin module (server-enforced): user listing/search, create/update/delete, ban/unban, bulk actions, and audit log feed
 
-## Architecture & Flow
+## Architecture & flow
 
 1. Frontend calls backend API with `credentials: 'include'`.
 2. Backend validates inputs with Zod, talks to Supabase, and issues HttpOnly cookies.
 3. Protected data fetched via `/auth/me`; 401 responses drive redirects to login.
 4. OAuth handled entirely server-side; frontend just redirects to the provided URL.
 
-## Getting Started
+## Getting started
 
 1. Clone the repo:
 
@@ -50,7 +55,7 @@ pnpm --filter types build
 pnpm dev
 ```
 
-## Environment Configuration
+## Environment configuration
 
 Tune these to point the backend at your Supabase project. See [backend/backend.md](backend/backend.md) for details.
 
@@ -81,7 +86,31 @@ Tune these to point the backend at your Supabase project. See [backend/backend.m
 - In Supabase Auth URL configuration, allow: `${BACKEND_URL}/auth/google/callback`.
 - In production, set `BACKEND_URL` in the backend env.
 
-## Deployment Guide
+## Create the first admin
+
+This step is very important as without it, no one will be able to access the admin panel. Note that this is a one-time step, as you can add more admins from the admin panel itself.
+
+1. Make sure the project is running (locally or deployed)
+2. Use the registration page to create a new user
+3. Go to the Supabase dashboard → SQL Editor
+4. Run this to grab the user ID of the newly created user (replace the email):
+   ```sql
+   select id, email, raw_app_meta_data
+   from auth.users
+   where email = 'you@example.com';
+   ```
+5. Copy the `id` and run this to promote the user to admin (replace the user ID):
+   ```sql
+   update auth.users
+   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+     || jsonb_build_object('role', 'admin', 'is_admin', true)
+   where id = 'USER_UUID_HERE';
+   ```
+6. While we're at it, let's get the admin logs working
+7. Go in your Supabase dashboard → Integrations → Cron and enable `pg_cron`
+8. Copy-paste the content of [`backend/supabase/migrations/20260311_admin_audit_logs.sql`](backend/supabase/migrations/20260311_admin_audit_logs.sql) into the SQL editor and run it to create the `admin_audit_logs` table. This is required for the admin audit feed to work.
+
+## Deployment guide
 
 Below are practical deployment recipes for common setups. Choose one and keep **frontend and backend origins** aligned with the notes to avoid Safari cookie issues.
 
@@ -161,7 +190,7 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 - Ensure your proxy forwards cookies and headers.
 - If you serve backend on a separate internal port, proxy `/auth/*` and `/health` to it.
 
-## API Surface (high level)
+## API surface (high level)
 
 - `POST /auth/register` — register, returns "check your email to verify"
 - `POST /auth/login` — login, sets HttpOnly cookie
@@ -170,10 +199,19 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 - `POST /auth/reset-password` — uses token from Supabase email (in cookie)
 - `GET /auth/google/url` — obtain OAuth redirect URL
 - `GET /auth/me` — current user info; 401 if not authenticated
+- `GET /admin/users` — list users (admin only)
+- `GET /admin/users/:id` — get user details (admin only)
+- `POST /admin/users/create` — create user (admin only)
+- `POST /admin/users/:id/update` — update user (admin only)
+- `POST /admin/users/:id/delete` — hard delete user (admin only)
+- `POST /admin/users/:id/ban` — ban user with optional reason/expiry (admin only)
+- `POST /admin/users/:id/unban` — unban user (admin only)
+- `POST /admin/users/bulk` — bulk moderation/delete actions (admin only)
+- `GET /admin/audit-logs` — list admin audit events (admin only)
 
 Full request/response shapes are in [backend/backend.md](backend/backend.md).
 
-## Frontend Behaviors
+## Frontend behaviors
 
 - Uses fetch with `credentials: 'include'` for all auth-related calls.
 - Pages: register, login, forgot-password, reset-password, dashboard (protected), logout.
@@ -182,14 +220,14 @@ Full request/response shapes are in [backend/backend.md](backend/backend.md).
 
 See [frontend/frontend.md](frontend/frontend.md) for flow details.
 
-## Security Posture
+## Security posture
 
 - HttpOnly cookies; no tokens in localStorage/sessionStorage.
 - Helmet security headers, CORS restricted via `FRONTEND_URL`, same-site cookies.
 - Non-enumerating auth errors and rate limiting on auth endpoints.
 - **Safari note:** third-party cookies may be blocked. Prefer same-origin proxying via `FRONTEND_PROXY_TARGET`.
 
-## Project Structure
+## Project structure
 
 - `backend/` — Express API, routes, controllers, middleware, services, validators.
 - `frontend/` — Next.js App Router pages and minimal UI flows.

@@ -1,4 +1,4 @@
-# Deployment Guide
+# Deployment guide
 
 ## Frontend on Vercel
 
@@ -35,7 +35,7 @@
 10. Hit deploy.
 11. Once done, get your Railway backend URL (e.g., `https://backend-production-2d74.up.railway.app`), copy-paste it into the `FRONTEND_PROXY_TARGET` env var of Vercel (no trailing slash) and redeploy.
 
-## Supabase Project Configuration
+## Supabase project configuration
 
 1. Go to Authentication → URL Configuration.
 2. Set Site URL to the Vercel URL.
@@ -44,7 +44,7 @@
    - `https://backend-production-2d74.up.railway.app/*`
    - `https://supabase-repro-frontend-b5e8.vercel.app/auth/google/callback`
 
-## Google OAuth Setup
+## Google OAuth setup
 
 1. Create a Google OAuth project.
 2. Set up OAuth flow.

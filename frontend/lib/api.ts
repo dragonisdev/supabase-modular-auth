@@ -1,4 +1,13 @@
 import type {
+  AdminAuditLog,
+  AdminBanUserInput,
+  AdminBulkActionInput,
+  AdminBulkActionResult,
+  AdminCreateUserInput,
+  AdminListUsersQuery,
+  AdminUser,
+  AdminUpdateUserInput,
+  PaginatedData,
   ApiResponse,
   ValidationErrorDetail,
   LoginResponseData,
@@ -16,7 +25,9 @@ export type { ApiResponse, ValidationErrorDetail };
  * Get CSRF token from cookie
  */
 function getCsrfToken(): string | null {
-  if (typeof document === "undefined") return null;
+  if (typeof document === "undefined") {
+    return null;
+  }
   const match = document.cookie.match(new RegExp(`(^| )${CSRF_COOKIE_NAME}=([^;]+)`));
   return match ? match[2] : null;
 }
@@ -39,7 +50,9 @@ export async function initCsrf(): Promise<void> {
  * Parse validation errors from API response into field-specific errors
  */
 export function parseFieldErrors(details?: ValidationErrorDetail[]): Record<string, string> {
-  if (!details || details.length === 0) return {};
+  if (!details || details.length === 0) {
+    return {};
+  }
 
   const fieldErrors: Record<string, string> = {};
   for (const detail of details) {
@@ -67,6 +80,10 @@ export function getErrorMessage(response: ApiResponse): string {
     case "AUTH_FAILED":
     case "INVALID_CREDENTIALS":
       return "Invalid email or password.";
+    case "UNAUTHORIZED":
+      return response.message || "Unauthorized.";
+    case "FORBIDDEN":
+      return response.message || "You do not have permission to perform this action.";
     case "EMAIL_NOT_VERIFIED":
       return "Please verify your email before logging in.";
     case "USER_EXISTS":
@@ -115,8 +132,29 @@ async function fetchAPI<T = unknown>(
       headers,
     });
 
-    const data: ApiResponse<T> = await response.json();
-    return data;
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      const data = (await response.json()) as ApiResponse<T>;
+      // Backend contract should always provide this shape, keep a fallback for resilience
+      if (typeof data?.success === "boolean") {
+        return data;
+      }
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Request failed with status ${response.status}.`,
+        error: "SERVICE_UNAVAILABLE",
+      };
+    }
+
+    return {
+      success: false,
+      message: "Unexpected server response format.",
+      error: "INTERNAL_ERROR",
+    };
   } catch {
     // Network error or server unreachable
     return {
@@ -125,6 +163,19 @@ async function fetchAPI<T = unknown>(
       error: "CONNECTION_FAILED",
     };
   }
+}
+
+function toQueryString(params: Record<string, string | number | boolean | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const query = searchParams.toString();
+  return query.length > 0 ? `?${query}` : "";
 }
 
 export const api = {
@@ -159,6 +210,66 @@ export const api = {
     }),
 
   getMe: () => fetchAPI<GetMeResponseData>("/auth/me"),
+
+  admin: {
+    listUsers: (query?: Partial<AdminListUsersQuery>) =>
+      fetchAPI<PaginatedData<AdminUser>>(
+        `/admin/users${toQueryString({
+          search: query?.search,
+          page: query?.page,
+          limit: query?.limit,
+          sortBy: query?.sortBy,
+          sortDirection: query?.sortDirection,
+          filterRole: query?.filterRole,
+          filterBanned: query?.filterBanned,
+        })}`,
+      ),
+
+    getUser: (id: string) => fetchAPI<{ user: AdminUser }>(`/admin/users/${id}`),
+
+    createUser: (payload: AdminCreateUserInput) =>
+      fetchAPI<{ user: AdminUser }>("/admin/users/create", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    updateUser: (id: string, payload: AdminUpdateUserInput) =>
+      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/update`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    deleteUser: (id: string) =>
+      fetchAPI(`/admin/users/${id}/delete`, {
+        method: "POST",
+      }),
+
+    banUser: (id: string, payload: AdminBanUserInput) =>
+      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/ban`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    unbanUser: (id: string) =>
+      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/unban`, {
+        method: "POST",
+      }),
+
+    bulkAction: (payload: AdminBulkActionInput) =>
+      fetchAPI<AdminBulkActionResult>("/admin/users/bulk", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+
+    listAuditLogs: (query?: { page?: number; limit?: number; action?: string }) =>
+      fetchAPI<PaginatedData<AdminAuditLog>>(
+        `/admin/audit-logs${toQueryString({
+          page: query?.page,
+          limit: query?.limit,
+          action: query?.action,
+        })}`,
+      ),
+  },
 
   // Google OAuth
   getGoogleAuthUrl: () => fetchAPI<GoogleAuthUrlResponseData>("/auth/google/url"),

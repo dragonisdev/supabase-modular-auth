@@ -1,8 +1,8 @@
-# Backend - Authentication API
+# Authentication backend
 
 Express.js + TypeScript + Supabase Auth. Stateless, secure, production-ready.
 
-## Quick Start
+## Quick start
 
 ```bash
 pnpm i --frozen-lockfile
@@ -16,7 +16,7 @@ Test: `curl http://localhost:3000/health`
 
 - **[backend.md](backend.md)** - API reference
 
-## Project Structure
+## Project structure
 
 ```
 src/
@@ -80,7 +80,7 @@ Request → Middleware → Routes → Controllers → Services → Supabase
 - Strict TypeScript
 - Security: Helmet, CORS, XSS protection, account lockout
 
-## Adding Features
+## Adding features
 
 1. Add Zod schema in `validators/`
 2. Add controller method in `controllers/`

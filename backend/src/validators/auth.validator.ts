@@ -1,7 +1,7 @@
+import { AUTH_CONSTANTS, USERNAME_PATTERN, JWT_PATTERN } from "@supabase-modular-auth/types";
+import xss from "xss";
 import { z } from "zod";
 import zxcvbn from "zxcvbn";
-import xss from "xss";
-import { AUTH_CONSTANTS, USERNAME_PATTERN, JWT_PATTERN } from "@supabase-modular-auth/types";
 
 // Re-export types from shared package
 export type {

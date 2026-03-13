@@ -2,6 +2,7 @@
   "compilerOptions": {
     "allowArbitraryExtensions": true,
     "allowSyntheticDefaultImports": true,
+    "declaration": true,
     "disableSizeLimit": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,

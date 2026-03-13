@@ -1,4 +1,4 @@
-## AGENTS.md — AI Guide for `supabase-repro`
+## AGENTS.md — AI guide for `supabase-modular-auth`
 
 This repo is a **monorepo** for a Supabase-auth-backed system with:
 
@@ -10,7 +10,7 @@ The frontend is intentionally thin: it **never calls Supabase** directly. All au
 
 ---
 
-## High-level Architecture & Flow
+## High-level architecture & flow
 
 1. **Frontend** makes `fetch` calls to backend with `credentials: "include"`.
 2. **Backend** validates input (Zod), calls Supabase Auth, and issues **HttpOnly cookies**.
@@ -21,7 +21,7 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 
 ---
 
-## Repository Map
+## Repository map
 
 ```
 /
@@ -45,10 +45,10 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 
 ---
 
-## Backend Rules (Security-First)
+## Backend rules (security-first)
 
 - **No UI logic** in backend; return JSON only.
-- **Supabase Auth only** (no custom auth tables).
+- **Supabase auth only** (no custom auth tables).
 - **Never log** passwords, tokens, or secrets (logger sanitizes sensitive fields).
 - **Normalize errors** to avoid user enumeration.
 - **Email verification is required** before login (`email_confirmed_at`).
@@ -56,7 +56,7 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 - **CSRF protection** is mandatory for non-GET requests.
 - **Rate-limiting** and **lockout** must stay in place for auth endpoints.
 
-### CSRF Rules
+### CSRF rules
 
 - **Cookie**: `csrf_token` (non-HttpOnly, SameSite=Strict)
 - **Header**: `X-CSRF-Token`
@@ -64,27 +64,27 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 - **Excluded**: `/auth/google/callback`, `/health`
 - Frontend initializes CSRF via `GET /auth/csrf-token` (see `CsrfProvider`).
 
-### Cookies & Session
+### Cookies & session
 
 - Auth cookie is **HttpOnly** and **SameSite** per env.
 - In production with `COOKIE_SECURE=true`, cookie name is prefixed with **`__Host-`**.
 - `COOKIE_DOMAIN` **must be empty** when using `__Host-` prefix.
 
-### Rate Limiting & Lockout
+### Rate limiting & lockout
 
 - Global limiter (100/15min dev, stricter in prod).
 - Auth limiter (default 5/15min).
 - Sensitive limiter for reset/forgot endpoints (half of auth limit, min 3).
 - **Lockout** is in-memory with exponential backoff; use Redis in multi-instance prod.
 
-### OAuth State Storage
+### OAuth state storage
 
-- OAuth `state` stored in-memory (`Map`) with 10-minute expiry.
-- In production, replace with Redis or a durable store.
+- OAuth `state` is handled by Supabase for the hosted OAuth flow.
+- Do not override `state` manually in `queryParams`, as it can break callback validation.
 
 ---
 
-## Frontend Rules (Thin Client)
+## Frontend rules (thin client)
 
 - **Never call Supabase directly**.
 - **Always** use `credentials: "include"`.
@@ -92,14 +92,14 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 - **Do not decode JWTs**; backend is source of truth.
 - Redirect to `/login` on `401` from protected calls.
 
-### Token Handling
+### Token handling
 
 - Supabase sends reset/verify tokens in the URL **hash** (`#access_token=...`).
 - The frontend parses the hash and sends the token to `/auth/reset-password`.
 
 ---
 
-## Shared Types & Validation
+## Shared types & validation
 
 The `types/` package exports:
 
@@ -111,7 +111,7 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 
 ---
 
-## API Surface
+## API surface
 
 ### Public
 
@@ -128,8 +128,23 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 ### Protected
 
 - `GET /auth/me`
+- `GET /admin/users`
+- `GET /admin/users/:id`
+- `POST /admin/users/create`
+- `POST /admin/users/:id/update`
+- `POST /admin/users/:id/delete`
+- `POST /admin/users/:id/ban`
+- `POST /admin/users/:id/unban`
+- `POST /admin/users/bulk`
+- `GET /admin/audit-logs`
 
-### Response Shape
+### Admin authorization
+
+- Admin access is enforced server-side via Supabase `app_metadata`.
+- A user is considered admin when `app_metadata.role === "admin"` or `app_metadata.is_admin === true`.
+- Never trust client-side role flags for authorization.
+
+### Response shape
 
 **Success**
 
@@ -147,7 +162,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 
 ---
 
-## Environment Variables
+## Environment variables
 
 ### Backend (`backend/.env`)
 
@@ -176,28 +191,27 @@ See `backend/.env.example` for the canonical list.
 
 ## Commands
 
-### Repo Root (workspaces)
+### Repo root (workspaces)
 
 - `pnpm dev` — run backend + frontend in parallel
 - `pnpm build` — build all packages
 - `pnpm lint` — lint all packages
+- `pnpm format` — format all packages
 - `pnpm type-check` — typecheck all packages
 
 ### Backend
 
 - `pnpm --filter @supabase-modular-auth/backend dev`
 - `pnpm --filter @supabase-modular-auth/backend build`
-- `pnpm --filter @supabase-modular-auth/backend lint`
 
 ### Frontend
 
 - `pnpm --filter @supabase-modular-auth/frontend dev`
 - `pnpm --filter @supabase-modular-auth/frontend build`
-- `pnpm --filter @supabase-modular-auth/frontend lint`
 
 ---
 
-## Gotchas & Notes
+## Gotchas & notes
 
 - **CORS** only allows `FRONTEND_URL` (and optionally `BACKEND_URL`) and only **GET/POST/OPTIONS**. If you add PUT/DELETE routes, update CORS.
 - **Request-ID** header is `X-Request-ID` (set in middleware).
@@ -208,7 +222,7 @@ See `backend/.env.example` for the canonical list.
 
 ---
 
-## Default Agent Behavior
+## Default agent behavior
 
 - Prefer security over convenience.
 - Do not introduce OTP/MFA or custom email systems.

@@ -1,7 +1,3 @@
-# Backend Authentication API
-
-A stateless backend authentication API built with Node.js, TypeScript, Express, and Supabase Auth.
-
 ## Features
 
 - ✅ Email/Password Registration with Email Verification
@@ -16,18 +12,7 @@ A stateless backend authentication API built with Node.js, TypeScript, Express, 
 - ✅ Input Validation (Zod)
 - ✅ Type-safe Error Handling
 
-## Table of Contents
-
-- [API Documentation](#api-documentation)
-- [Security Features](#security-features)
-- [Authentication Flows](#authentication-flows)
-- [Frontend Integration](#frontend-integration)
-- [Project Structure](#project-structure)
-- [Environment Variables](#environment-variables)
-
----
-
-## API Documentation
+## API documentation
 
 ### Base URL
 
@@ -35,9 +20,9 @@ A stateless backend authentication API built with Node.js, TypeScript, Express, 
 http://localhost:3000
 ```
 
-### Response Format
+### Response format
 
-**Success Response**
+**Success response**
 
 ```json
 {
@@ -47,7 +32,7 @@ http://localhost:3000
 }
 ```
 
-**Error Response**
+**Error response**
 
 ```json
 {
@@ -61,11 +46,51 @@ http://localhost:3000
 
 All protected endpoints require a valid JWT token stored in an HttpOnly cookie named `auth_token`.
 
----
+### Admin authorization
+
+Admin endpoints are protected by authentication + server-side admin checks.
+
+- Source of truth: Supabase `app_metadata`
+- Admin when: `role === "admin"` or `is_admin === true`
+- Enforcement: backend middleware only (client checks are UX only)
+- Rate limiting: higher allowance for admin reads (`GET`) and stricter limit for admin writes (`POST`) to avoid throttling normal panel navigation.
+- Admin-created users now use the regular signup verification flow (verification email is sent by default unless explicitly confirmed).
+- Admin user updates can edit role/admin flags, password, and moderation metadata (`banned`, `ban_reason`, `ban_expires_at`).
+- Admin audit logs are persisted in Supabase table `public.admin_audit_logs`.
+- Retention: backend triggers periodic purge via SQL function `public.admin_purge_audit_logs` (default 180 days).
+- Immutability: audit rows are append-only (updates/deletes blocked except retention purge function).
+
+### Supabase audit migration
+
+- Apply: `backend/supabase/migrations/20260311_admin_audit_logs.sql`
+- This migration creates:
+  - `public.admin_audit_logs` table + indexes
+  - mutation-prevention trigger (append-only enforcement)
+  - `public.admin_purge_audit_logs(integer)` retention function
+  - grants restricted to service role for backend access
+
+### OAuth callback CSRF protection
+
+- OAuth state validation is handled by Supabase during code exchange.
+- Avoid manually overriding OAuth `state` values in authorization URL parameters.
 
 ### Endpoints
 
-#### Health Check
+#### Admin endpoints
+
+- `GET /admin/users`
+- `GET /admin/users/:id`
+- `POST /admin/users/create`
+- `POST /admin/users/:id/update`
+- `POST /admin/users/:id/delete`
+- `POST /admin/users/:id/ban`
+- `POST /admin/users/:id/unban`
+- `POST /admin/users/bulk`
+- `GET /admin/audit-logs`
+
+All admin endpoints require a valid auth cookie and admin privileges.
+
+#### Health check
 
 **GET /health**
 
@@ -81,15 +106,13 @@ Check if the server is running.
 }
 ```
 
----
-
 #### Register
 
 **POST /auth/register**
 
 Register a new user with email and password.
 
-**Request Body**
+**Request body**
 
 ```json
 {
@@ -98,14 +121,14 @@ Register a new user with email and password.
 }
 ```
 
-**Password Requirements**
+**Password requirements**
 
 - Minimum 8 characters
 - At least one uppercase letter
 - At least one lowercase letter
 - At least one number
 
-**Success Response (201)**
+**Success response (201)**
 
 ```json
 {
@@ -114,7 +137,7 @@ Register a new user with email and password.
 }
 ```
 
-**Error Responses**
+**Error responses**
 
 - `400 INVALID_INPUT`: Invalid email or password format
 - `401 AUTH_FAILED`: Registration failed (non-enumerating)
@@ -126,15 +149,13 @@ Register a new user with email and password.
 - Supabase sends verification email automatically
 - Response is non-enumerating to prevent email discovery
 
----
-
 #### Login
 
 **POST /auth/login**
 
 Login with email and password.
 
-**Request Body**
+**Request body**
 
 ```json
 {
@@ -143,7 +164,7 @@ Login with email and password.
 }
 ```
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -160,7 +181,7 @@ Login with email and password.
 
 Sets HttpOnly cookie: `auth_token`
 
-**Error Responses**
+**Error responses**
 
 - `400 INVALID_INPUT`: Invalid email or password format
 - `401 AUTH_FAILED`: Invalid credentials (non-enumerating)
@@ -173,15 +194,13 @@ Sets HttpOnly cookie: `auth_token`
 - Access token stored in HttpOnly cookie
 - Frontend never sees the JWT token
 
----
-
 #### Logout
 
 **POST /auth/logout**
 
 Logout the current user.
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -197,15 +216,13 @@ Clears the `auth_token` cookie.
 - Invalidates the session in Supabase
 - Clears auth cookie even if Supabase logout fails
 
----
-
-#### Forgot Password
+#### Forgot password
 
 **POST /auth/forgot-password**
 
 Request a password reset email.
 
-**Request Body**
+**Request body**
 
 ```json
 {
@@ -213,7 +230,7 @@ Request a password reset email.
 }
 ```
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -222,7 +239,7 @@ Request a password reset email.
 }
 ```
 
-**Error Responses**
+**Error responses**
 
 - `400 INVALID_INPUT`: Invalid email format
 - `429 RATE_LIMIT_EXCEEDED`: Too many attempts
@@ -233,15 +250,13 @@ Request a password reset email.
 - Supabase sends reset email if account exists
 - Reset link redirects to frontend
 
----
-
-#### Reset Password
+#### Reset password
 
 **POST /auth/reset-password**
 
 Reset password using the token from email.
 
-**Request Body**
+**Request body**
 
 ```json
 {
@@ -253,14 +268,14 @@ Reset password using the token from email.
 
 - Cookie: `auth_token` (from reset link)
 
-**Password Requirements**
+**Password requirements**
 
 - Minimum 8 characters
 - At least one uppercase letter
 - At least one lowercase letter
 - At least one number
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -269,7 +284,7 @@ Reset password using the token from email.
 }
 ```
 
-**Error Responses**
+**Error responses**
 
 - `400 INVALID_INPUT`: Invalid password format
 - `401 AUTH_FAILED`: Invalid or expired reset token
@@ -281,15 +296,13 @@ Reset password using the token from email.
 - Token is consumed after successful reset
 - Auth cookie is cleared after reset
 
----
-
 #### Get Google OAuth URL
 
 **GET /auth/google/url**
 
 Get the Google OAuth authorization URL.
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -301,7 +314,7 @@ Get the Google OAuth authorization URL.
 }
 ```
 
-**Error Responses**
+**Error responses**
 
 - `401 AUTH_FAILED`: Failed to generate OAuth URL
 
@@ -311,15 +324,13 @@ Get the Google OAuth authorization URL.
 - User completes OAuth on Google's site
 - Google redirects to backend callback
 
----
-
-#### Google OAuth Callback
+#### Google OAuth callback
 
 **GET /auth/google/callback**
 
 Handle Google OAuth callback (used by Google, not frontend).
 
-**Query Parameters**
+**Query parameters**
 
 - `code`: Authorization code from Google
 
@@ -338,9 +349,7 @@ Handle Google OAuth callback (used by Google, not frontend).
 - Backend exchanges code for session
 - Frontend never touches OAuth tokens
 
----
-
-#### Get Current User
+#### Get current user
 
 **GET /auth/me**
 
@@ -350,7 +359,7 @@ Get information about the currently authenticated user.
 
 - Cookie: `auth_token` (automatically sent)
 
-**Success Response (200)**
+**Success response (200)**
 
 ```json
 {
@@ -367,7 +376,7 @@ Get information about the currently authenticated user.
 }
 ```
 
-**Error Responses**
+**Error responses**
 
 - `401 AUTH_FAILED`: Not authenticated or invalid session
 
@@ -377,22 +386,20 @@ Get information about the currently authenticated user.
 - Validates JWT on every request
 - Clears cookie if session is invalid
 
----
+## Security features
 
-## Security Features
+### Core security
 
-### Core Security
-
-- **HttpOnly Cookies**: Access tokens stored securely, inaccessible to JavaScript
-- **Rate Limiting**: Prevents brute force attacks (5 attempts per 15 min for auth endpoints)
+- **HttpOnly cookies**: Access tokens stored securely, inaccessible to JavaScript
+- **Rate limiting**: Prevents brute force attacks (5 attempts per 15 min for auth endpoints)
 - **Helmet**: Security headers to prevent common vulnerabilities
 - **CORS**: Restricts API access to authorized frontend origin
-- **Input Validation**: Validates all inputs with Zod schemas
-- **Non-Enumerating Errors**: Prevents user enumeration attacks
-- **Email Verification**: Required before login
-- **Stateless Architecture**: No server-side session storage
+- **Input validation**: Validates all inputs with Zod schemas
+- **Non-enumerating errors**: Prevents user enumeration attacks
+- **Email verification**: Required before login
+- **Stateless architecture**: No server-side session storage
 
-### Security Headers
+### Security headers
 
 The API includes the following security headers via Helmet:
 
@@ -402,14 +409,14 @@ The API includes the following security headers via Helmet:
 - `X-XSS-Protection: 1; mode=block`
 - `Strict-Transport-Security` (HSTS)
 
-### CORS Policy
+### CORS policy
 
-- **Allowed Origin**: Configured via `FRONTEND_URL` environment variable
+- **Allowed origin**: Configured via `FRONTEND_URL` environment variable
 - **Credentials**: Enabled (allows cookies)
 - **Methods**: GET, POST, PUT, DELETE, OPTIONS
 - **Headers**: Content-Type, Authorization
 
-### Cookie Configuration
+### Cookie configuration
 
 The `auth_token` cookie is set with:
 
@@ -422,24 +429,24 @@ The `auth_token` cookie is set with:
 
 **Safari note:** If frontend and backend are on different sites, set `COOKIE_SAME_SITE=none` and `CSRF_COOKIE_SAME_SITE=none` with `COOKIE_SECURE=true` (HTTPS). Safari may still block third‑party cookies; prefer same-site proxying.
 
-### Rate Limiting
+### Rate limiting
 
-**Global Rate Limit**
-
-- **Window**: 15 minutes
-- **Max Requests**: 100 per window
-
-**Auth Endpoints Rate Limit**
+**Global rate limit**
 
 - **Window**: 15 minutes
-- **Max Requests**: 5 per window
+- **Max requests**: 100 per window
+
+**Auth endpoints rate limit**
+
+- **Window**: 15 minutes
+- **Max requests**: 5 per window
 - **Applies to**:
   - POST /auth/register
   - POST /auth/login
   - POST /auth/forgot-password
   - POST /auth/reset-password
 
-### Error Codes
+### Error codes
 
 | Code                  | HTTP Status | Description                 |
 | --------------------- | ----------- | --------------------------- |
@@ -450,11 +457,9 @@ The `auth_token` cookie is set with:
 | `INTERNAL_ERROR`      | 500         | Internal server error       |
 | `RATE_LIMIT_EXCEEDED` | 429         | Too many requests           |
 
----
+## Authentication flows
 
-## Authentication Flows
-
-### Email/Password Registration Flow
+### Email/Password registration flow
 
 1. User submits email and password to `/auth/register`
 2. Backend validates input and creates user in Supabase
@@ -462,7 +467,7 @@ The `auth_token` cookie is set with:
 4. User clicks verification link in email
 5. User can now login via `/auth/login`
 
-### Email/Password Login Flow
+### Email/Password login flow
 
 1. User submits credentials to `/auth/login`
 2. Backend validates with Supabase
@@ -470,7 +475,7 @@ The `auth_token` cookie is set with:
 4. Backend sets HttpOnly cookie with JWT
 5. User is authenticated
 
-### Password Reset Flow
+### Password reset flow
 
 1. User requests reset via `/auth/forgot-password`
 2. Supabase sends reset email with token
@@ -479,7 +484,7 @@ The `auth_token` cookie is set with:
 5. Backend validates token and updates password
 6. User must login with new password
 
-### Google OAuth Flow
+### Google OAuth flow
 
 1. Frontend requests OAuth URL via `/auth/google/url`
 2. Frontend redirects user to Google
@@ -497,11 +502,9 @@ The `auth_token` cookie is set with:
 - In Supabase Auth URL configuration, allow: `${BACKEND_URL}/auth/google/callback`.
 - Set `BACKEND_URL` in backend env for production.
 
----
+## Frontend integration
 
-## Frontend Integration
-
-### Making Authenticated Requests
+### Making authenticated requests
 
 ```javascript
 // Cookies are sent automatically
@@ -510,7 +513,7 @@ fetch("http://localhost:3000/auth/me", {
 });
 ```
 
-### Handling Errors
+### Handling errors
 
 ```javascript
 const response = await fetch("http://localhost:3000/auth/login", {
@@ -537,7 +540,7 @@ if (!data.success) {
 }
 ```
 
-### OAuth Integration
+### OAuth integration
 
 ```javascript
 // Get OAuth URL
@@ -548,7 +551,7 @@ const { data } = await response.json();
 window.location.href = data.url;
 ```
 
-### Security Best Practices
+### Security best practices
 
 1. **Never store JWT in localStorage or sessionStorage**
    - Use HttpOnly cookies only
@@ -569,9 +572,7 @@ window.location.href = data.url;
 6. **Validate input on frontend too**
    - Improves UX and reduces server load
 
----
-
-## Project Structure
+## Project structure
 
 ```
 backend/
@@ -600,7 +601,7 @@ backend/
 └── tsconfig.json
 ```
 
-## Environment Variables
+## Environment variables
 
 ### Required
 
@@ -629,14 +630,14 @@ backend/
 | `COOKIE_SAME_SITE`    | SameSite attribute         | `lax`        |
 | `COOKIE_MAX_AGE_DAYS` | Cookie expiration (days)   | `7`          |
 
-### Optional - CSRF Cookie
+### Optional - CSRF cookie
 
 | Variable                | Description                                          | Default  |
 | ----------------------- | ---------------------------------------------------- | -------- |
 | `CSRF_COOKIE_SAME_SITE` | SameSite for CSRF cookie                             | `strict` |
 | `CSRF_COOKIE_SECURE`    | Secure flag for CSRF cookie (inherits COOKIE_SECURE) | -        |
 
-### Optional - Rate Limiting
+### Optional - Rate limiting
 
 | Variable                         | Description                   | Default  |
 | -------------------------------- | ----------------------------- | -------- |
@@ -653,13 +654,9 @@ backend/
 | `REQUEST_TIMEOUT_MS` | Request timeout (ms)               | `30000` |
 | `MAX_REQUEST_SIZE`   | Max request body size              | `10kb`  |
 
-### Optional - Account Lockout
+### Optional - Account lockout
 
 | Variable               | Description                    | Default  |
 | ---------------------- | ------------------------------ | -------- |
 | `LOCKOUT_MAX_ATTEMPTS` | Failed attempts before lockout | `5`      |
 | `LOCKOUT_DURATION_MS`  | Lockout duration (ms)          | `900000` |
-
-## License
-
-ISC

@@ -1,23 +1,26 @@
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "env": {
-    "es2024": true,
-    "node": true
+import { defineConfig } from "oxlint";
+
+export default defineConfig({
+  env: {
+    es2025: true,
   },
-  "ignorePatterns": ["**/dist/", "**/node_modules/"],
-  "plugins": ["import", "oxc", "typescript", "unicorn"],
-  "categories": {
-    "correctness": "warn",
-    "perf": "warn",
-    "suspicious": "warn",
-    "pedantic": "off",
-    "style": "off",
-    "restriction": "off",
-    "nursery": "off"
+  ignorePatterns: ["**/node_modules/", "**/dist/", "**/build/", "**/.next/", "**/out/"],
+  options: {
+    typeAware: true,
   },
-  "rules": {
+  categories: {
+    correctness: "warn",
+    perf: "warn",
+    suspicious: "warn",
+    pedantic: "off",
+    style: "off",
+    restriction: "off",
+    nursery: "off",
+  },
+  plugins: ["import", "eslint", "oxc", "typescript", "unicorn"],
+  rules: {
     "capitalized-comments": "off",
-    "curly": ["error", "all"],
+    curly: ["error", "all"],
     "id-length": "off",
     "import/no-duplicates": "error",
     "import/no-named-as-default": "warn",
@@ -31,6 +34,7 @@
     "no-prototype-builtins": "error",
     "no-redeclare": "error",
     "no-regex-spaces": "error",
+    "no-unassigned-import": ["warn", { allow: ["**/*.css"] }],
     "no-unexpected-multiline": "off",
     "no-unused-expressions": "error",
     "no-useless-call": "error",
@@ -52,17 +56,36 @@
     "typescript/no-unused-vars": [
       "warn",
       {
-        "argsIgnorePattern": "^_",
-        "caughtErrorsIgnorePattern": "^_",
-        "destructuredArrayIgnorePattern": "^_",
-        "ignoreRestSiblings": true,
-        "varsIgnorePattern": "^_"
-      }
+        argsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+        destructuredArrayIgnorePattern: "^_",
+        ignoreRestSiblings: true,
+        varsIgnorePattern: "^_",
+      },
     ],
     "typescript/prefer-as-const": "error",
     "unicorn/consistent-function-scoping": "off",
     "unicorn/no-empty-file": "off",
     "unicorn/prefer-array-find": "error",
-    "unicorn/prefer-set-has": "error"
-  }
-}
+    "unicorn/prefer-set-has": "error",
+  },
+  overrides: [
+    {
+      files: ["./backend/**/*", "./types/**/*"],
+      env: {
+        es2025: true,
+        node: true,
+      },
+      plugins: ["node"],
+    },
+    {
+      files: ["./frontend/**/*"],
+      env: {
+        es2025: true,
+        browser: true,
+        "shared-node-browser": true,
+      },
+      plugins: ["react", "react-perf", "nextjs"],
+    },
+  ],
+});

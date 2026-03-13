@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
 import { loginSchema } from "@supabase-modular-auth/types";
-import { PasswordInput, FormInput } from "@/components";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useCallback, useState, type ChangeEvent, type SyntheticEvent } from "react";
+
+import { PasswordInput, FormInput } from "@/components";
+import { api, parseFieldErrors, getErrorMessage } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,55 +17,58 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setFieldErrors({});
+  const handleSubmit = useCallback(
+    async (e: SyntheticEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setLoading(true);
+      setError("");
+      setFieldErrors({});
 
-    const validation = loginSchema.safeParse({ email, password });
+      const validation = loginSchema.safeParse({ email, password });
 
-    if (!validation.success) {
-      const errors: Record<string, string> = {};
-      for (const issue of validation.error.issues) {
-        const field = issue.path[0]?.toString() || "general";
-        if (!errors[field]) {
-          errors[field] = issue.message;
+      if (!validation.success) {
+        const errors: Record<string, string> = {};
+        for (const issue of validation.error.issues) {
+          const field = issue.path[0]?.toString() || "general";
+          if (!errors[field]) {
+            errors[field] = issue.message;
+          }
         }
+        setFieldErrors(errors);
+        setLoading(false);
+        return;
       }
-      setFieldErrors(errors);
-      setLoading(false);
-      return;
-    }
 
-    try {
-      const response = await api.login(email, password);
+      try {
+        const response = await api.login(email, password);
 
-      if (response.success) {
-        // Verify authentication by fetching user data
-        const meResponse = await api.getMe();
+        if (response.success) {
+          // Verify authentication by fetching user data
+          const meResponse = await api.getMe();
 
-        if (meResponse.success) {
-          router.push("/dashboard");
+          if (meResponse.success) {
+            router.push("/dashboard");
+          } else {
+            setError("Login verification failed. Please try again.");
+          }
         } else {
-          setError("Login verification failed. Please try again.");
+          // Parse field-specific errors from backend
+          const backendFieldErrors = parseFieldErrors(response.details);
+          if (Object.keys(backendFieldErrors).length > 0) {
+            setFieldErrors(backendFieldErrors);
+          }
+          setError(getErrorMessage(response));
         }
-      } else {
-        // Parse field-specific errors from backend
-        const backendFieldErrors = parseFieldErrors(response.details);
-        if (Object.keys(backendFieldErrors).length > 0) {
-          setFieldErrors(backendFieldErrors);
-        }
-        setError(getErrorMessage(response));
+      } catch {
+        setError("An unexpected error occurred. Please try again.");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [email, password, router],
+  );
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = useCallback(async () => {
     setGoogleLoading(true);
     setError("");
 
@@ -82,20 +86,31 @@ export default function LoginPage() {
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, []);
+
+  const handleEmailChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-black">Login</h1>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h1 className="mb-6 text-center text-2xl font-bold text-black">Login</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
           <FormInput
             id="email"
             type="email"
             label="Email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
             required
             disabled={loading}
             error={fieldErrors.email}
@@ -105,14 +120,14 @@ export default function LoginPage() {
             id="password"
             label="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
             required
             disabled={loading}
             error={fieldErrors.password}
           />
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="rounded-md border border-red-200 bg-red-50 p-3">
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
@@ -120,7 +135,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
             {loading ? "Logging in..." : "Login"}
           </button>
@@ -131,7 +146,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or</span>
+            <span className="bg-white px-2 text-gray-500">Or</span>
           </div>
         </div>
 
@@ -139,9 +154,12 @@ export default function LoginPage() {
         <button
           onClick={handleGoogleLogin}
           disabled={googleLoading || loading}
-          className="w-full mb-4 py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+          >
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -162,16 +180,19 @@ export default function LoginPage() {
           {googleLoading ? "Connecting to Google..." : "Continue with Google"}
         </button>
 
-        <div className="mt-4 text-center space-y-2">
+        <div className="mt-4 space-y-2 text-center">
           <Link
             href="/forgot-password"
-            className="block text-sm text-blue-600 hover:text-blue-800 underline"
+            className="block text-sm text-blue-600 underline hover:text-blue-800"
           >
             Forgot password?
           </Link>
           <p className="text-sm text-gray-600">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-blue-600 hover:text-blue-800 underline">
+            <Link
+              href="/register"
+              className="text-blue-600 underline hover:text-blue-800"
+            >
               Register
             </Link>
           </p>
