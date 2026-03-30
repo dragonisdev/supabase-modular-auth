@@ -1,16 +1,49 @@
-import { Request, Response, NextFunction } from "express";
-import { AuthError } from "../utils/errors.js";
-import { clearAuthCookie, getAuthTokenFromCookies } from "../utils/response.js";
+import type { Request, Response, NextFunction } from "express";
+
 import SupabaseService from "../services/supabase.service.js";
+import { AuthError } from "../utils/errors.js";
 import * as SecurityLogger from "../utils/logger.js";
+import { clearAuthCookie, getAuthTokenFromCookies } from "../utils/response.js";
 
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email?: string;
     email_confirmed_at?: string;
+    role?: string;
+    is_admin?: boolean;
+    banned?: boolean;
+    ban_reason?: string | null;
+    ban_expires_at?: string | null;
   };
 }
+
+const getBanState = (appMetadata: unknown): { banned: boolean; banExpiresAt: string | null } => {
+  if (!appMetadata || typeof appMetadata !== "object") {
+    return { banned: false, banExpiresAt: null };
+  }
+
+  const metadata = appMetadata as { banned?: unknown; ban_expires_at?: unknown };
+
+  if (metadata.banned !== true) {
+    return { banned: false, banExpiresAt: null };
+  }
+
+  const expiresAt = typeof metadata.ban_expires_at === "string" ? metadata.ban_expires_at : null;
+  if (!expiresAt) {
+    return { banned: true, banExpiresAt: null };
+  }
+
+  const expiresAtMs = Date.parse(expiresAt);
+  if (Number.isNaN(expiresAtMs)) {
+    return { banned: true, banExpiresAt: expiresAt };
+  }
+
+  return {
+    banned: Date.now() < expiresAtMs,
+    banExpiresAt: expiresAt,
+  };
+};
 
 /**
  * Authentication Middleware
@@ -55,11 +88,29 @@ export const authenticate = async (
       throw new AuthError("Invalid or expired session");
     }
 
+    const banState = getBanState(user.app_metadata);
+    if (banState.banned) {
+      clearAuthCookie(res);
+      SecurityLogger.logSecurityEvent("BANNED_USER_REQUEST", req, {
+        userId: user.id,
+      });
+      throw new AuthError("Your account has been banned. Please contact support.");
+    }
+
     // Attach user to request for downstream handlers
     req.user = {
       id: user.id,
       email: user.email,
       email_confirmed_at: user.email_confirmed_at,
+      role: typeof user.app_metadata?.role === "string" ? user.app_metadata.role : "user",
+      is_admin:
+        typeof user.app_metadata?.is_admin === "boolean"
+          ? user.app_metadata.is_admin
+          : user.app_metadata?.role === "admin",
+      banned: banState.banned,
+      ban_reason:
+        typeof user.app_metadata?.ban_reason === "string" ? user.app_metadata.ban_reason : null,
+      ban_expires_at: banState.banExpiresAt,
     };
 
     next();
@@ -129,10 +180,26 @@ export const optionalAuthenticate = async (
     } = await supabase.auth.getUser(token);
 
     if (!error && user) {
+      const banState = getBanState(user.app_metadata);
+      if (banState.banned) {
+        clearAuthCookie(res);
+        next();
+        return;
+      }
+
       req.user = {
         id: user.id,
         email: user.email,
         email_confirmed_at: user.email_confirmed_at,
+        role: typeof user.app_metadata?.role === "string" ? user.app_metadata.role : "user",
+        is_admin:
+          typeof user.app_metadata?.is_admin === "boolean"
+            ? user.app_metadata.is_admin
+            : user.app_metadata?.role === "admin",
+        banned: banState.banned,
+        ban_reason:
+          typeof user.app_metadata?.ban_reason === "string" ? user.app_metadata.ban_reason : null,
+        ban_expires_at: banState.banExpiresAt,
       };
     } else {
       // Invalid token - clear it but don't fail

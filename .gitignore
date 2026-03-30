@@ -6,6 +6,7 @@
 *.swo
 *~
 .DS_Store
+*.pem
 
 # Environment variables
 .env
@@ -24,3 +25,11 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+next-env.d.ts
+
+# Next.js
+.next/
+out/
+
+# vercel
+.vercel

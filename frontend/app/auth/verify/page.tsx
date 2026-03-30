@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React, { useEffect, useMemo } from "react";
 
 type VerifyStatus = "loading" | "success" | "error";
 
@@ -90,9 +90,9 @@ export default function VerifyEmailPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Verifying your email...</p>
         </div>
       </div>
@@ -101,12 +101,12 @@ export default function VerifyEmailPage() {
 
   if (status === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
               <svg
-                className="w-8 h-8 text-red-600"
+                className="h-8 w-8 text-red-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -119,11 +119,11 @@ export default function VerifyEmailPage() {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-red-600 mb-4">Verification Failed</h2>
-            <p className="text-gray-600 mb-6">{errorMessage}</p>
+            <h2 className="mb-4 text-2xl font-bold text-red-600">Verification Failed</h2>
+            <p className="mb-6 text-gray-600">{errorMessage}</p>
             <Link
               href="/login"
-              className="inline-block py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
             >
               Go to Login
             </Link>
@@ -134,12 +134,12 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
             <svg
-              className="w-8 h-8 text-green-600"
+              className="h-8 w-8 text-green-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -152,14 +152,14 @@ export default function VerifyEmailPage() {
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-green-600 mb-4">Email Verified!</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="mb-4 text-2xl font-bold text-green-600">Email Verified!</h2>
+          <p className="mb-6 text-gray-600">
             Your email has been verified successfully. You can now log in to your account.
           </p>
-          <p className="text-sm text-gray-500 mb-4">Redirecting to login in 3 seconds...</p>
+          <p className="mb-4 text-sm text-gray-500">Redirecting to login in 3 seconds...</p>
           <Link
             href="/login"
-            className="inline-block py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
             Go to Login Now
           </Link>

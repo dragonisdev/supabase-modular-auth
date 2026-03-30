@@ -1,6 +1,6 @@
-# Authentication Frontend
+# Authentication frontend
 
-A Next.js 14 authentication frontend that communicates with a backend API.
+A Next.js 16 authentication frontend that communicates with a backend API.
 
 ## Features
 
@@ -11,6 +11,7 @@ A Next.js 14 authentication frontend that communicates with a backend API.
 - ✅ Protected Dashboard
 - ✅ Logout Functionality
 - ✅ HttpOnly Cookie-based Authentication
+- ✅ Admin Panel (`/admin`) with user management and audit logs
 
 ## Setup
 
@@ -52,9 +53,12 @@ The app will be available at `http://localhost:3001`
 - `/forgot-password` - Request password reset
 - `/reset-password` - Reset password with token
 - `/dashboard` - Protected user dashboard
+- `/admin` - Admin panel home (admin only)
+- `/admin/users` - User management (admin only)
+- `/admin/audit` - Admin audit logs (admin only)
 - `/logout` - Logout and redirect to login
 
-## Security Features
+## Security features
 
 - HttpOnly cookies for authentication
 - No client-side token storage
@@ -62,14 +66,14 @@ The app will be available at `http://localhost:3001`
 - Protected routes with automatic redirect
 - Non-enumerating error messages
 
-## Tech Stack
+## Tech stack
 
-- Next.js 14 (App Router)
+- Next.js 16 (App Router)
 - TypeScript
 - Tailwind CSS
 - Fetch API
 
-## Google OAuth Example
+## Google OAuth example
 
 ```ts
 const response = await api.getGoogleAuthUrl();
@@ -78,21 +82,10 @@ if (response.success && response.data?.url) {
 }
 ```
 
-## Important Notes
+## Important notes
 
 - Frontend NEVER interacts with Supabase directly
 - All authentication is handled by the backend API
 - Always use `credentials: 'include'` in fetch requests
 - Auth state is determined by API responses only
-
-## Safari & Cross-Site Cookies
-
-Safari often blocks third-party cookies. If your frontend and backend are on **different sites**, HttpOnly auth cookies may not be set.
-
-**Recommended fix:** use same-origin proxying by setting `FRONTEND_PROXY_TARGET` and calling `/auth/*` relative routes. This keeps cookies first-party.
-
-When using the proxy, set `NEXT_PUBLIC_API_BASE_URL` to an empty string (or omit it) so the client calls relative paths.
-
-If you must stay cross-site, configure backend cookies with `SameSite=None` + `Secure`, but Safari may still block them.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Admin UI relies on `/auth/me` returning `is_admin` in the user payload

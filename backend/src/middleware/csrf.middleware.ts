@@ -1,5 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import type { RequestHandler } from "express";
+
 import { randomBytes, timingSafeEqual } from "crypto";
+import { Response } from "express";
+
 import config from "../config/env.js";
 import * as SecurityLogger from "../utils/logger.js";
 
@@ -39,11 +42,15 @@ const setCsrfCookie = (res: Response, token: string): void => {
 
 const EXCLUDED_ROUTES = ["/auth/google/callback", "/health"];
 
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
+const isExcludedRoute = (path: string): boolean => {
+  return EXCLUDED_ROUTES.some((route) => path === route || path.startsWith(`${route}/`));
+};
+
+export const csrfProtection: RequestHandler = (req, res, next): void => {
   const method = req.method.toUpperCase();
   const path = req.path;
 
-  if (EXCLUDED_ROUTES.some((route) => path.startsWith(route))) {
+  if (isExcludedRoute(path)) {
     next();
     return;
   }
@@ -89,7 +96,7 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   next();
 };
 
-export const getCsrfToken = (_req: Request, res: Response): void => {
+export const getCsrfToken: RequestHandler = (_req, res): void => {
   const token = generateCsrfToken();
   setCsrfCookie(res, token);
   res.json({ success: true, message: "CSRF token generated" });

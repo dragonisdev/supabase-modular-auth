@@ -16,7 +16,9 @@ export interface ApiResponse<T = unknown> {
 export const ErrorCode = {
   AUTH_FAILED: "AUTH_FAILED",
   INVALID_CREDENTIALS: "INVALID_CREDENTIALS",
+  UNAUTHORIZED: "UNAUTHORIZED",
   EMAIL_NOT_VERIFIED: "EMAIL_NOT_VERIFIED",
+  FORBIDDEN: "FORBIDDEN",
   USER_EXISTS: "USER_EXISTS",
   USER_NOT_FOUND: "USER_NOT_FOUND",
   VALIDATION_ERROR: "VALIDATION_ERROR",
@@ -38,6 +40,11 @@ export interface AuthUser {
   email_verified?: boolean;
   created_at?: string;
   username?: string | null;
+  role?: string;
+  is_admin?: boolean;
+  banned?: boolean;
+  ban_reason?: string | null;
+  ban_expires_at?: string | null;
 }
 
 export interface LoginResponseData {

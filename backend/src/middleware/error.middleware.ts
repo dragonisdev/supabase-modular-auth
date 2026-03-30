@@ -1,4 +1,5 @@
-import { Request, Response, NextFunction } from "express";
+import type { ErrorRequestHandler, RequestHandler } from "express";
+
 import { AppError, ErrorCode } from "../utils/errors.js";
 import * as SecurityLogger from "../utils/logger.js";
 
@@ -9,12 +10,7 @@ export interface ErrorResponse {
   details?: unknown;
 }
 
-export const errorHandler = (
-  err: Error | AppError,
-  req: Request,
-  res: Response,
-  _next: NextFunction,
-): void => {
+export const errorHandler: ErrorRequestHandler = (err: Error | AppError, req, res, _next): void => {
   // Use enhanced logging for all errors
   SecurityLogger.logError(err, req, {
     middleware: "errorHandler",
@@ -64,7 +60,7 @@ export const errorHandler = (
   res.status(500).json(response);
 };
 
-export const notFoundHandler = (_req: Request, res: Response): void => {
+export const notFoundHandler: RequestHandler = (_req, res): void => {
   const response: ErrorResponse = {
     success: false,
     error: ErrorCode.INVALID_INPUT,

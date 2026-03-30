@@ -6,10 +6,8 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev -p 3001",
-    "lint": "eslint --cache --cache-location .eslintcache --concurrency=auto .",
-    "lint:fix": "eslint --concurrency=auto --fix .",
     "start": "next start -p 3001",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsgo --noEmit"
   },
   "dependencies": {
     "@supabase-modular-auth/types": "workspace:*",
@@ -19,15 +17,15 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/estree": "^1.0.8",
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/json-schema": "^7.0.15",
     "@types/node": "catalog:",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "eslint": "^9.39.2",
-    "eslint-config-next": "^16.1.6",
-    "tailwindcss": "^4.1.18",
+    "@typescript/native-preview": "latest",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.1",
     "typescript": "catalog:"
-  }
+  },
+  "packageManager": "pnpm@10.32.1"
 }

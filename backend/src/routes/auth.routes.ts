@@ -1,9 +1,10 @@
 import { Router } from "express";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+
+import config from "../config/env.js";
 import { AuthController } from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { getCsrfToken } from "../middleware/csrf.middleware.js";
-import { rateLimit, ipKeyGenerator } from "express-rate-limit";
-import config from "../config/env.js";
 import * as SecurityLogger from "../utils/logger.js";
 
 const router = Router();

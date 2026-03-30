@@ -1,23 +1,86 @@
-import { Request, Response, NextFunction } from "express";
-import SupabaseService from "../services/supabase.service.js";
+import type { Request, Response, NextFunction } from "express";
+
+import config from "../config/env.js";
 import lockoutService from "../services/lockout.service.js";
-import {
-  registerSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-} from "../validators/auth.validator.js";
+import SupabaseService from "../services/supabase.service.js";
 import { AuthError, EmailNotVerifiedError, ValidationError, ErrorCode } from "../utils/errors.js";
+import * as SecurityLogger from "../utils/logger.js";
 import {
   setAuthCookie,
   clearAuthCookie,
   successResponse,
   getAuthTokenFromCookies,
 } from "../utils/response.js";
-import * as SecurityLogger from "../utils/logger.js";
-import config from "../config/env.js";
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "../validators/auth.validator.js";
 
 export class AuthController {
+  private buildBanMessage(appMetadata: unknown): string {
+    if (!appMetadata || typeof appMetadata !== "object") {
+      return "Your account has been suspended. Please contact support.";
+    }
+
+    const metadata = appMetadata as { ban_reason?: unknown; ban_expires_at?: unknown };
+    const reason = typeof metadata.ban_reason === "string" ? metadata.ban_reason.trim() : "";
+    const expiresAt =
+      typeof metadata.ban_expires_at === "string" ? metadata.ban_expires_at.trim() : "";
+
+    const parts: string[] = ["Your account has been suspended."];
+
+    if (reason) {
+      parts.push(`Reason: ${reason}.`);
+    }
+
+    if (expiresAt) {
+      const expiryMs = Date.parse(expiresAt);
+      if (!Number.isNaN(expiryMs)) {
+        const expiryLabel = new Date(expiryMs).toLocaleString();
+        if (Date.now() < expiryMs) {
+          parts.push(`Ban expires on ${expiryLabel}.`);
+        } else {
+          parts.push(`Ban expiry was ${expiryLabel}.`);
+        }
+      }
+    }
+
+    parts.push("Please contact support if you think this is a mistake.");
+    return parts.join(" ");
+  }
+
+  private getBanState(appMetadata: unknown): {
+    banned: boolean;
+    banExpiresAt: string | null;
+  } {
+    if (!appMetadata || typeof appMetadata !== "object") {
+      return { banned: false, banExpiresAt: null };
+    }
+
+    const metadata = appMetadata as { banned?: unknown; ban_expires_at?: unknown };
+
+    if (metadata.banned !== true) {
+      return { banned: false, banExpiresAt: null };
+    }
+
+    const expiresAt = typeof metadata.ban_expires_at === "string" ? metadata.ban_expires_at : null;
+    if (!expiresAt) {
+      return { banned: true, banExpiresAt: null };
+    }
+
+    const expiryMs = Date.parse(expiresAt);
+    if (Number.isNaN(expiryMs)) {
+      return { banned: true, banExpiresAt: expiresAt };
+    }
+
+    return {
+      banned: Date.now() < expiryMs,
+      banExpiresAt: expiresAt,
+    };
+  }
+
   /**
    * Infer the public backend base URL from proxy headers when BACKEND_URL is not set.
    * This prevents localhost callbacks in hosted environments.
@@ -255,7 +318,10 @@ export class AuthController {
         }
 
         if (errorMessage.includes("banned")) {
-          throw new AuthError("Your account has been suspended. Please contact support.");
+          throw new AuthError(
+            "Your account has been suspended. Please contact support.",
+            ErrorCode.UNAUTHORIZED,
+          );
         }
 
         if (errorCode === "too_many_requests") {
@@ -273,6 +339,14 @@ export class AuthController {
         lockoutService.recordFailedAttempt(email, clientIp);
         SecurityLogger.logFailedLogin(email, req, "No session returned");
         throw new AuthError("Invalid email or password.");
+      }
+
+      const banState = this.getBanState(data.user.app_metadata);
+      if (banState.banned) {
+        SecurityLogger.logSecurityEvent("BANNED_USER_LOGIN_BLOCKED", req, {
+          userId: data.user.id,
+        });
+        throw new AuthError(this.buildBanMessage(data.user.app_metadata), ErrorCode.UNAUTHORIZED);
       }
 
       // Check if email is verified
@@ -568,6 +642,18 @@ export class AuthController {
         throw new AuthError("User not found. Please login again.");
       }
 
+      const banState = this.getBanState(user.app_metadata);
+      if (banState.banned) {
+        clearAuthCookie(res);
+        throw new AuthError(this.buildBanMessage(user.app_metadata), ErrorCode.UNAUTHORIZED);
+      }
+
+      const role = typeof user.app_metadata?.role === "string" ? user.app_metadata.role : "user";
+      const isAdmin =
+        typeof user.app_metadata?.is_admin === "boolean"
+          ? user.app_metadata.is_admin
+          : role === "admin";
+
       successResponse(res, "User retrieved", {
         user: {
           id: user.id,
@@ -575,6 +661,12 @@ export class AuthController {
           email_verified: !!user.email_confirmed_at,
           created_at: user.created_at,
           username: user.user_metadata?.username || null,
+          role,
+          is_admin: isAdmin,
+          banned: banState.banned,
+          ban_reason:
+            typeof user.app_metadata?.ban_reason === "string" ? user.app_metadata.ban_reason : null,
+          ban_expires_at: banState.banExpiresAt,
         },
       });
     } catch (error) {

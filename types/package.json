@@ -14,16 +14,14 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc --watch",
-    "lint": "oxlint --type-aware .",
-    "lint:fix": "oxlint --fix --type-aware .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsgo --noEmit"
   },
   "dependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
-    "oxlint": "catalog:",
-    "oxlint-tsgolint": "catalog:",
+    "@typescript/native-preview": "latest",
     "typescript": "catalog:"
-  }
+  },
+  "packageManager": "pnpm@10.32.1"
 }

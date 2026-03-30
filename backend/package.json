@@ -15,19 +15,17 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch --clear-screen=false src/index.ts",
-    "lint": "oxlint --type-aware .",
-    "lint:fix": "oxlint --fix --type-aware .",
     "start": "node dist/index.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.54.1",
     "@supabase-modular-auth/types": "workspace:*",
-    "@supabase/supabase-js": "^2.95.3",
+    "@supabase/supabase-js": "^2.99.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.4",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
+    "express-rate-limit": "^8.3.1",
     "helmet": "^8.1.0",
     "typescript": "catalog:",
     "uuid": "^13.0.0",
@@ -42,8 +40,8 @@
     "@types/express-serve-static-core": "^5.1.1",
     "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
-    "oxlint": "catalog:",
-    "oxlint-tsgolint": "catalog:",
+    "@typescript/native-preview": "latest",
     "tsx": "^4.21.0"
-  }
+  },
+  "packageManager": "pnpm@10.32.1"
 }
