@@ -7,13 +7,14 @@
 3. It will auto-select the backend, but select the root directory → frontend (let it load the Next.js icon for auto-setup).
 4. Change the build command to: `cd .. && pnpm --filter @supabase-modular-auth/types build && pnpm --filter @supabase-modular-auth/frontend build`
 5. Change the install command to: `cd .. && pnpm i --frozen-lockfile`
-6. Add environment variable: `FRONTEND_PROXY_TARGET` with a dummy value (for now).
+6. Add environment variable: `FRONTEND_PROXY_TARGET` with a dummy value (for now), later we will use railway backend URL for it.
+7. `NEXT_PUBLIC_API_BASE_URL` can be left empty as an env variable
 
 ## Backend on Railway
 
 1. Create a new project.
 2. Select the GitHub repository.
-3. If for some reason only one node appears (they're stacked), go to frontend → settings → Delete Service at the bottom.
+3. It will create 2 ndoes. If for some reason only one node appears (they're stacked), go to frontend and → settings → Delete Service at the bottom.
 4. Go to backend → settings.
 5. Choose a closer region if you wish (the closest to the Supabase region is better).
 6. Enable Railpack builder with metal build (it worked just fine).
@@ -33,7 +34,8 @@
    - `SUPABASE_SERVICE_ROLE_KEY=...`
    - `SUPABASE_URL=...`
 10. Hit deploy.
-11. Once done, get your Railway backend URL (e.g., `https://backend-production-2d74.up.railway.app`), copy-paste it into the `FRONTEND_PROXY_TARGET` env var of Vercel (no trailing slash) and redeploy.
+11. Once done, get your Railway public backend URL (e.g., `https://backend-production-2d74.up.railway.app`), copy-paste it into the `FRONTEND_PROXY_TARGET` env var of Vercel (no trailing slash) and redeploy.
+12. Just in case it's not working, redeploy both services again.
 
 ## Supabase Project Configuration
 
