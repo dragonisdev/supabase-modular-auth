@@ -21,7 +21,7 @@
   "dependencies": {
     "@dotenvx/dotenvx": "^1.54.1",
     "@supabase-modular-auth/types": "workspace:*",
-    "@supabase/supabase-js": "^2.99.1",
+    "@supabase/supabase-js": "2.112.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",

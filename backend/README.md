@@ -74,7 +74,7 @@ LOCKOUT_DURATION_MS=900000
 
 Request → Middleware → Routes → Controllers → Services → Supabase
 
-- Stateless (JWT in HttpOnly cookies)
+- Stateless API (Supabase access and refresh tokens in separate HttpOnly cookies)
 - Per-IP rate limiting (100/15min general, 5/15min auth)
 - Zod input validation
 - Strict TypeScript
@@ -112,6 +112,8 @@ router.post('/endpoint', authLimiter, (req, res, next) =>
 ## Security
 
 - CSRF protection (Double Submit Cookie)
+- Transparent session rotation with request-scoped Supabase clients
+- Retryable Supabase failures preserve session cookies
 - Rate limiting per IP
 - Account lockout (5 fails → 15 min)
 - Password strength (zxcvbn)

@@ -16,6 +16,17 @@ class SupabaseService {
 
   private constructor() {}
 
+  private static createAnonClient(): SupabaseClient {
+    return createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+        flowType: "pkce",
+      },
+    });
+  }
+
   /**
    * Get the anonymous client for client-facing auth operations
    * Uses ANON_KEY - respects Row Level Security (RLS)
@@ -23,16 +34,18 @@ class SupabaseService {
    */
   public static getClient(): SupabaseClient {
     if (!SupabaseService.anonInstance) {
-      SupabaseService.anonInstance = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-          flowType: "pkce",
-        },
-      });
+      SupabaseService.anonInstance = SupabaseService.createAnonClient();
     }
     return SupabaseService.anonInstance;
+  }
+
+  /**
+   * Create an isolated client for operations that mutate auth session state.
+   * Request-scoped clients prevent one user's refresh from sharing in-memory
+   * auth state with another concurrent request.
+   */
+  public static createSessionClient(): SupabaseClient {
+    return SupabaseService.createAnonClient();
   }
 
   /**
