@@ -1,7 +1,14 @@
 import type { FormatOptions } from "oxfmt";
 
 export default {
-  ignorePatterns: ["**/node_modules/", "**/dist/", "**/build/", "**/.next/", "**/out/"],
+  ignorePatterns: [
+    "**/node_modules/",
+    "**/dist/",
+    "**/build/",
+    "**/.next/",
+    "**/out/",
+    "types/src/generated/openapi.ts",
+  ],
   singleAttributePerLine: true,
   sortImports: {
     groups: [

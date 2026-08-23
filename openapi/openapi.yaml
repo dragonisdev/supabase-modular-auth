@@ -1,0 +1,1369 @@
+openapi: 3.1.0
+info:
+  title: Supabase Modular Auth API
+  version: 1.0.0
+  description: |
+    Contract for the stateless Express API used by the generic SaaS starter.
+    Authentication credentials are managed exclusively by the backend in
+    HttpOnly cookies. Browser clients must include credentials and must send the
+    double-submit CSRF cookie value in `X-CSRF-Token` for every unsafe request.
+  license:
+    name: ISC
+    identifier: ISC
+servers:
+  - url: http://localhost:3000
+    description: Local Express API
+tags:
+  - name: Health
+  - name: Authentication
+  - name: Administration
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Check API health
+      tags: [Health]
+      responses:
+        "200":
+          $ref: "#/components/responses/HealthSuccess"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/csrf-token:
+    get:
+      operationId: getCsrfToken
+      summary: Issue a fresh CSRF token cookie
+      description: |
+        Sets the non-HttpOnly `csrf_token` cookie. Read that cookie in the browser
+        and echo it in `X-CSRF-Token` on subsequent unsafe requests.
+      tags: [Authentication]
+      responses:
+        "200":
+          $ref: "#/components/responses/CsrfTokenSuccess"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      summary: Register an account
+      description: Always uses a non-enumerating success response when an email already exists.
+      tags: [Authentication]
+      security:
+        - csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/CreatedSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      summary: Create an authenticated session
+      description: Sets separate HttpOnly access and rotating refresh cookies on success.
+      tags: [Authentication]
+      security:
+        - csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/LoginSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      summary: Clear and revoke the current session
+      description: Local cookie clearing succeeds even when remote session revocation is unavailable.
+      tags: [Authentication]
+      security:
+        - csrfCookie: []
+          csrfHeader: []
+      responses:
+        "200":
+          $ref: "#/components/responses/SimpleSuccess"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/forgot-password:
+    post:
+      operationId: requestPasswordReset
+      summary: Request a password-reset email
+      description: Always returns the same success message to prevent account enumeration.
+      tags: [Authentication]
+      security:
+        - csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimpleSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      summary: Replace a password using a Supabase reset token
+      tags: [Authentication]
+      security:
+        - csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimpleSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/google/url:
+    get:
+      operationId: getGoogleAuthorizationUrl
+      summary: Create a Google OAuth authorization URL
+      tags: [Authentication]
+      responses:
+        "200":
+          $ref: "#/components/responses/OAuthUrlSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/google/callback:
+    get:
+      operationId: handleGoogleCallback
+      summary: Complete the server-side Google OAuth flow
+      description: Called by the OAuth provider and always redirects to the frontend.
+      tags: [Authentication]
+      parameters:
+        - name: code
+          in: query
+          required: false
+          description: Authorization code supplied by the OAuth provider.
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: OAuth provider error code.
+          schema:
+            type: string
+      responses:
+        "302":
+          $ref: "#/components/responses/OAuthRedirect"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      summary: Get the authenticated user
+      description: Transparently rotates cookies when the access token expired but refresh is valid.
+      tags: [Authentication]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      responses:
+        "200":
+          $ref: "#/components/responses/CurrentUserSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      summary: List users
+      tags: [Administration]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/UserSortBy"
+        - $ref: "#/components/parameters/SortDirection"
+        - $ref: "#/components/parameters/FilterRole"
+        - $ref: "#/components/parameters/FilterBanned"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminUsersSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/{id}:
+    get:
+      operationId: getAdminUser
+      summary: Get a user by ID
+      tags: [Administration]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminUserSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/create:
+    post:
+      operationId: createAdminUser
+      summary: Create a user
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCreateUserRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/AdminUserCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/{id}/update:
+    post:
+      operationId: updateAdminUser
+      summary: Update a user
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateUserRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminUserSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/{id}/delete:
+    post:
+      operationId: deleteAdminUser
+      summary: Delete a user
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimpleSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/{id}/ban:
+    post:
+      operationId: banAdminUser
+      summary: Ban a user
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBanUserRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminUserSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/{id}/unban:
+    post:
+      operationId: unbanAdminUser
+      summary: Remove a user ban
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminUserSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/users/bulk:
+    post:
+      operationId: bulkAdminUserAction
+      summary: Ban, unban, or delete several users
+      tags: [Administration]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBulkActionRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminBulkActionSuccess"
+        "207":
+          $ref: "#/components/responses/AdminBulkActionPartialSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/audit-logs:
+    get:
+      operationId: listAdminAuditLogs
+      summary: List admin audit events
+      tags: [Administration]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 80
+        - name: actorId
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+        - name: targetUserId
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          $ref: "#/components/responses/AdminAuditLogsSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: Default HttpOnly access-token cookie; the configured name may differ.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: auth_token_refresh
+      description: Default HttpOnly rotating refresh-token cookie; the configured name may differ.
+    csrfCookie:
+      type: apiKey
+      in: cookie
+      name: csrf_token
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: Supabase user identifier.
+      schema:
+        type: string
+        minLength: 1
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Search:
+      name: search
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 120
+    UserSortBy:
+      name: sortBy
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [created_at, email, last_sign_in_at]
+        default: created_at
+    SortDirection:
+      name: sortDirection
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+    FilterRole:
+      name: filterRole
+      in: query
+      required: false
+      schema:
+        $ref: "#/components/schemas/AdminRole"
+    FilterBanned:
+      name: filterBanned
+      in: query
+      required: false
+      schema:
+        type: boolean
+
+  headers:
+    RequestId:
+      description: Correlation identifier assigned to the request.
+      schema:
+        type: string
+    SetCookie:
+      description: One or more cookies issued or rotated by the backend.
+      schema:
+        type: string
+
+  responses:
+    HealthSuccess:
+      description: API is healthy.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HealthResponse"
+    CsrfTokenSuccess:
+      description: CSRF token cookie issued.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SimpleSuccessResponse"
+    SimpleSuccess:
+      description: Operation succeeded.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SimpleSuccessResponse"
+    CreatedSuccess:
+      description: Resource accepted and created.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SimpleSuccessResponse"
+    LoginSuccess:
+      description: Session created and authentication cookies issued.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LoginResponse"
+    OAuthUrlSuccess:
+      description: Authorization URL generated.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OAuthUrlResponse"
+    OAuthRedirect:
+      description: Redirect to the frontend dashboard or OAuth error route.
+      headers:
+        Location:
+          description: Frontend redirect URL.
+          required: true
+          schema:
+            type: string
+            format: uri
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+    CurrentUserSuccess:
+      description: Authenticated user returned; cookies may also be rotated.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CurrentUserResponse"
+    AdminUsersSuccess:
+      description: Paginated users returned.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminUsersResponse"
+    AdminUserSuccess:
+      description: User returned.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminUserResponse"
+    AdminUserCreated:
+      description: User created.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminUserResponse"
+    AdminBulkActionSuccess:
+      description: All requested bulk operations succeeded.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminBulkActionResponse"
+    AdminBulkActionPartialSuccess:
+      description: The operation completed, but at least one target failed.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminBulkActionResponse"
+    AdminAuditLogsSuccess:
+      description: Paginated audit events returned.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AdminAuditLogsResponse"
+    BadRequest:
+      description: Request validation failed.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication failed, the account is unavailable, or admin privileges are absent.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: CSRF validation failed or the authenticated email is not verified.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RequestTimeout:
+      description: Request processing timed out.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: A global, auth, sensitive-auth, or admin rate limit was exceeded.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        RateLimit:
+          description: Draft-7 RateLimit fields emitted by express-rate-limit.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalServerError:
+      description: An unexpected server error occurred.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServiceUnavailable:
+      description: Session validation is temporarily unavailable; auth cookies are preserved.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+        data: {}
+    SimpleSuccessResponse:
+      $ref: "#/components/schemas/SuccessEnvelope"
+    ErrorResponse:
+      type: object
+      required: [success, error, message]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: string
+          enum:
+            - AUTH_FAILED
+            - INVALID_CREDENTIALS
+            - UNAUTHORIZED
+            - EMAIL_NOT_VERIFIED
+            - FORBIDDEN
+            - USER_EXISTS
+            - USER_NOT_FOUND
+            - VALIDATION_ERROR
+            - INVALID_INPUT
+            - RATE_LIMITED
+            - RATE_LIMIT_EXCEEDED
+            - CONNECTION_FAILED
+            - SERVICE_UNAVAILABLE
+            - REGISTRATION_FAILED
+            - INVALID_TOKEN
+            - TOKEN_EXPIRED
+            - INTERNAL_ERROR
+            - CSRF_TOKEN_MISSING
+            - CSRF_TOKEN_INVALID
+            - REQUEST_TIMEOUT
+        message:
+          type: string
+        details:
+          type: array
+          description: Present only in development for validation failures.
+          items:
+            $ref: "#/components/schemas/ValidationErrorDetail"
+        retryAfter:
+          type: number
+          minimum: 0
+          description: Retry delay reported by some rate-limit responses.
+    ValidationErrorDetail:
+      type: object
+      required: [code, message, path]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        path:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+    HealthResponse:
+      type: object
+      required: [success, message, timestamp]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+          const: OK
+        timestamp:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: string
+          minLength: 3
+          pattern: "^[a-zA-Z0-9_-]+$"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Must also pass the backend zxcvbn score of at least 3.
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPasswordRequest:
+      type: object
+      required: [password, token]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: Must also pass the backend zxcvbn score of at least 3.
+        token:
+          type: string
+          minLength: 10
+          maxLength: 2048
+          pattern: "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]*$"
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [user]
+              properties:
+                user:
+                  type: object
+                  required: [id, email]
+                  properties:
+                    id:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+    OAuthUrlResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+    AuthUser:
+      type: object
+      required:
+        - id
+        - email
+        - email_verified
+        - username
+        - role
+        - is_admin
+        - banned
+        - ban_reason
+        - ban_expires_at
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        email_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        username:
+          type: [string, "null"]
+        role:
+          type: string
+        is_admin:
+          type: boolean
+        banned:
+          type: boolean
+        ban_reason:
+          type: [string, "null"]
+        ban_expires_at:
+          type: [string, "null"]
+          format: date-time
+    CurrentUserResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [user]
+              properties:
+                user:
+                  $ref: "#/components/schemas/AuthUser"
+    AdminRole:
+      type: string
+      enum: [admin, user]
+    AdminUser:
+      type: object
+      required:
+        - id
+        - email
+        - username
+        - role
+        - is_admin
+        - banned
+        - ban_reason
+        - ban_expires_at
+        - email_verified
+        - created_at
+        - last_sign_in_at
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        username:
+          type: [string, "null"]
+        role:
+          type: string
+        is_admin:
+          type: boolean
+        banned:
+          type: boolean
+        ban_reason:
+          type: [string, "null"]
+        ban_expires_at:
+          type: [string, "null"]
+          format: date-time
+        email_verified:
+          type: boolean
+        created_at:
+          type: [string, "null"]
+          format: date-time
+        last_sign_in_at:
+          type: [string, "null"]
+          format: date-time
+    AdminUserResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [user]
+              properties:
+                user:
+                  $ref: "#/components/schemas/AdminUser"
+    AdminUsersResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedAdminUsers"
+    PaginatedAdminUsers:
+      type: object
+      required: [items, page, limit, total, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUser"
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 1
+    AdminCreateUserRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+        role:
+          $ref: "#/components/schemas/AdminRole"
+        emailConfirmed:
+          type: boolean
+          default: false
+    AdminUpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        username:
+          type: [string, "null"]
+          minLength: 3
+          maxLength: 30
+        role:
+          $ref: "#/components/schemas/AdminRole"
+        isAdmin:
+          type: boolean
+        banned:
+          type: boolean
+        banReason:
+          type: [string, "null"]
+          maxLength: 300
+        banExpiresAt:
+          type: [string, "null"]
+          format: date-time
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+    AdminBanUserRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+          default: No reason provided
+        expiresAt:
+          type: string
+          format: date-time
+    AdminBulkActionRequest:
+      type: object
+      required: [userIds, action]
+      properties:
+        userIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: string
+            minLength: 1
+        action:
+          type: string
+          enum: [ban, unban, delete]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+        expiresAt:
+          type: string
+          format: date-time
+    AdminBulkActionFailure:
+      type: object
+      required: [userId, message]
+      properties:
+        userId:
+          type: string
+        message:
+          type: string
+    AdminBulkActionResult:
+      type: object
+      required: [action, successCount, failureCount, failures]
+      properties:
+        action:
+          type: string
+          enum: [ban, unban, delete]
+        successCount:
+          type: integer
+          minimum: 0
+        failureCount:
+          type: integer
+          minimum: 0
+        failures:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminBulkActionFailure"
+    AdminBulkActionResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/AdminBulkActionResult"
+    AdminAuditLog:
+      type: object
+      required:
+        - id
+        - actor_user_id
+        - actor_email
+        - action
+        - target_user_id
+        - target_email
+        - reason
+        - request_id
+        - ip
+        - user_agent
+        - status
+        - metadata
+        - created_at
+      properties:
+        id:
+          type: string
+        actor_user_id:
+          type: string
+        actor_email:
+          type: [string, "null"]
+          format: email
+        action:
+          type: string
+        target_user_id:
+          type: [string, "null"]
+        target_email:
+          type: [string, "null"]
+          format: email
+        reason:
+          type: [string, "null"]
+        request_id:
+          type: [string, "null"]
+        ip:
+          type: [string, "null"]
+        user_agent:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [success, failed]
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+    PaginatedAdminAuditLogs:
+      type: object
+      required: [items, page, limit, total, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAuditLog"
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 1
+    AdminAuditLogsResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: "#/components/schemas/PaginatedAdminAuditLogs"

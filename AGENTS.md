@@ -40,7 +40,10 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 │  ├─ app/             # routes & pages
 │  ├─ components/      # form inputs, csrf provider
 │  └─ lib/             # API client
-└─ types/              # Shared schemas + types (Zod)
+├─ openapi/            # OpenAPI 3.1 source contract
+├─ test/               # Mocked, contract, database, and opt-in live tests
+├─ types/              # Shared schemas + generated API contract types
+└─ .github/workflows/  # Continuous integration
 ```
 
 ---
@@ -204,7 +207,13 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - `pnpm build` — build all packages
 - `pnpm lint` — lint all packages
 - `pnpm format` — format all packages
+- `pnpm format:check` — verify formatting without writing
 - `pnpm type-check` — typecheck all packages
+- `pnpm test` — run deterministic mocked, contract, and static database tests
+- `pnpm test:type-check` — typecheck the root test suite
+- `pnpm test:coverage` — run the default suite with coverage
+- `pnpm api:check` — regenerate the OpenAPI TypeScript contract and fail on drift
+- `pnpm test:database` — include live migration/RLS checks when `TEST_DATABASE_URL` is set
 
 ### Backend
 
@@ -225,6 +234,8 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - **Error logs** are JSON; sensitive fields are redacted by logger.
 - **Dark mode is intentionally disabled** in `frontend/app/globals.css` for readability.
 - The backend is strict about payload sizes and timeouts (`MAX_REQUEST_SIZE`, `REQUEST_TIMEOUT_MS`).
+- There is no tenant-owned product table yet. The migration tests require RLS and a policy for any
+  future table containing `tenant_id`; add two-tenant behavioral tests with the first such schema.
 - **Safari/ITP** may block third‑party cookies. Prefer same-origin proxying via `FRONTEND_PROXY_TARGET` or keep frontend/backend on the same site.
 
 ---

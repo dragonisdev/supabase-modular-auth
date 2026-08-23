@@ -1,7 +1,6 @@
-import type { RequestHandler } from "express";
+import type { RequestHandler, Response } from "express";
 
 import { randomBytes, timingSafeEqual } from "crypto";
-import { Response } from "express";
 
 import config from "../config/env.js";
 import * as SecurityLogger from "../utils/logger.js";

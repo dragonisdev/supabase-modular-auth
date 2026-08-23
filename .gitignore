@@ -15,6 +15,7 @@
 # Logs
 logs/
 *.log
+coverage/
 
 # OS
 Thumbs.db
