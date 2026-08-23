@@ -16,6 +16,7 @@ import type {
 } from "@supabase-modular-auth/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+const ADMIN_API_PREFIX = API_BASE_URL ? "/admin" : "/api/admin";
 const CSRF_COOKIE_NAME = "csrf_token";
 
 // Re-export types for convenience
@@ -214,7 +215,7 @@ export const api = {
   admin: {
     listUsers: (query?: Partial<AdminListUsersQuery>) =>
       fetchAPI<PaginatedData<AdminUser>>(
-        `/admin/users${toQueryString({
+        `${ADMIN_API_PREFIX}/users${toQueryString({
           search: query?.search,
           page: query?.page,
           limit: query?.limit,
@@ -225,45 +226,45 @@ export const api = {
         })}`,
       ),
 
-    getUser: (id: string) => fetchAPI<{ user: AdminUser }>(`/admin/users/${id}`),
+    getUser: (id: string) => fetchAPI<{ user: AdminUser }>(`${ADMIN_API_PREFIX}/users/${id}`),
 
     createUser: (payload: AdminCreateUserInput) =>
-      fetchAPI<{ user: AdminUser }>("/admin/users/create", {
+      fetchAPI<{ user: AdminUser }>(`${ADMIN_API_PREFIX}/users/create`, {
         method: "POST",
         body: JSON.stringify(payload),
       }),
 
     updateUser: (id: string, payload: AdminUpdateUserInput) =>
-      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/update`, {
+      fetchAPI<{ user: AdminUser }>(`${ADMIN_API_PREFIX}/users/${id}/update`, {
         method: "POST",
         body: JSON.stringify(payload),
       }),
 
     deleteUser: (id: string) =>
-      fetchAPI(`/admin/users/${id}/delete`, {
+      fetchAPI(`${ADMIN_API_PREFIX}/users/${id}/delete`, {
         method: "POST",
       }),
 
     banUser: (id: string, payload: AdminBanUserInput) =>
-      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/ban`, {
+      fetchAPI<{ user: AdminUser }>(`${ADMIN_API_PREFIX}/users/${id}/ban`, {
         method: "POST",
         body: JSON.stringify(payload),
       }),
 
     unbanUser: (id: string) =>
-      fetchAPI<{ user: AdminUser }>(`/admin/users/${id}/unban`, {
+      fetchAPI<{ user: AdminUser }>(`${ADMIN_API_PREFIX}/users/${id}/unban`, {
         method: "POST",
       }),
 
     bulkAction: (payload: AdminBulkActionInput) =>
-      fetchAPI<AdminBulkActionResult>("/admin/users/bulk", {
+      fetchAPI<AdminBulkActionResult>(`${ADMIN_API_PREFIX}/users/bulk`, {
         method: "POST",
         body: JSON.stringify(payload),
       }),
 
     listAuditLogs: (query?: { page?: number; limit?: number; action?: string }) =>
       fetchAPI<PaginatedData<AdminAuditLog>>(
-        `/admin/audit-logs${toQueryString({
+        `${ADMIN_API_PREFIX}/audit-logs${toQueryString({
           page: query?.page,
           limit: query?.limit,
           action: query?.action,

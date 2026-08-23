@@ -34,6 +34,8 @@ For backend details, see [backend/backend.md](backend/backend.md).
 
 ## Getting started
 
+Prerequisites: Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported) and pnpm 10.32.1.
+
 1. Clone the repo:
 
 ```bash
@@ -67,7 +69,7 @@ Tune these to point the backend at your Supabase project. See [backend/backend.m
 - `FRONTEND_URL` (for CORS + redirects)
 - `PORT` (optional, default 3000)
 - `NODE_ENV` (optional, default development)
-- `BACKEND_URL` (optional)
+- `BACKEND_URL` (public OAuth callback origin; use the frontend origin in same-origin proxy mode)
 - Cookie flags: `COOKIE_NAME`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS` (optional)
 - CSRF cookie flags: `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE` (optional)
 - Rate limiting: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS` (optional)
@@ -76,15 +78,15 @@ Tune these to point the backend at your Supabase project. See [backend/backend.m
 
 **Frontend**
 
-- `NEXT_PUBLIC_API_BASE_URL` to point fetch calls at the backend.
-- Optional: `FRONTEND_PROXY_TARGET` for same-origin proxying (recommended for Safari). When using this, leave `NEXT_PUBLIC_API_BASE_URL` empty so the client uses relative `/auth/*` paths.
+- Recommended: set `FRONTEND_PROXY_TARGET` for same-origin proxying and leave `NEXT_PUBLIC_API_BASE_URL` empty. Browser auth calls use `/auth/*`; admin API calls use `/api/admin/*` to avoid conflicts with Next.js pages.
+- Optional cross-origin fallback: set `NEXT_PUBLIC_API_BASE_URL` directly to the backend.
 
 **Google OAuth setup**
 
 - Enable the Google provider in Supabase Auth settings.
 - In Google Cloud OAuth client, set redirect URI to: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
 - In Supabase Auth URL configuration, allow: `${BACKEND_URL}/auth/google/callback`.
-- In production, set `BACKEND_URL` in the backend env.
+- In production proxy mode, set `BACKEND_URL` to the public frontend origin so the callback and its host-only cookie stay first-party. Use the backend origin only in direct cross-origin mode.
 
 ## Create the first admin
 
@@ -136,7 +138,7 @@ Below are practical deployment recipes for common setups. Choose one and keep **
 - Deploy `backend/` as a Node.js service.
 - Set env:
   - `FRONTEND_URL=https://<your-frontend-domain>`
-  - `BACKEND_URL=https://<your-backend-domain>` (required for OAuth callbacks)
+  - `BACKEND_URL=https://<your-frontend-domain>` in the recommended proxy mode. Use the backend domain only with the cross-origin fallback.
   - `NODE_ENV=production`
   - `COOKIE_SECURE=true`
   - `COOKIE_SAME_SITE=lax` (same-site) or `none` (cross-site)
@@ -152,12 +154,12 @@ Below are practical deployment recipes for common setups. Choose one and keep **
 Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 
 - Netlify env:
-  - `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-domain>`
-  - (Optional) `FRONTEND_PROXY_TARGET=https://<your-backend-domain>` and leave `NEXT_PUBLIC_API_BASE_URL` empty
+  - **Recommended**: `FRONTEND_PROXY_TARGET=https://<your-backend-domain>` and leave `NEXT_PUBLIC_API_BASE_URL` empty.
+  - Cross-origin fallback: `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-domain>`.
 
 - Railway env:
   - `FRONTEND_URL=https://<your-frontend-domain>`
-  - `BACKEND_URL=https://<your-backend-domain>`
+  - `BACKEND_URL=https://<your-frontend-domain>` in proxy mode; use the backend domain only in direct cross-origin mode.
   - `NODE_ENV=production`
   - `COOKIE_SECURE=true`
   - `COOKIE_SAME_SITE=lax` (same-site) or `none` (cross-site)
@@ -170,12 +172,13 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 **Suggested layout**
 
 - `https://app.example.com` → Next.js frontend
-- `https://app.example.com/auth/*` → proxied to backend
+- Next.js proxies `/auth/*`, `/api/admin/*`, and `/health` to the internal backend origin.
+- `/api/admin/*` is translated to the backend's `/admin/*` namespace, leaving Next.js `/admin/*` pages intact.
 
 **Frontend**
 
-- Set `FRONTEND_PROXY_TARGET=https://app.example.com` (or your backend origin)
-- Leave `NEXT_PUBLIC_API_BASE_URL` empty to use relative `/auth/*` paths
+- Set `FRONTEND_PROXY_TARGET=http://127.0.0.1:3000` (or your backend's private origin).
+- Leave `NEXT_PUBLIC_API_BASE_URL` empty to use relative `/auth/*` and `/api/admin/*` paths.
 
 **Backend**
 
@@ -187,8 +190,8 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 
 **Reverse proxy notes**
 
-- Ensure your proxy forwards cookies and headers.
-- If you serve backend on a separate internal port, proxy `/auth/*` and `/health` to it.
+- Send public traffic to Next.js and ensure your proxy forwards cookies and headers.
+- Next.js uses `FRONTEND_PROXY_TARGET` server-side to forward API traffic to the backend's private origin.
 
 ## API surface (high level)
 

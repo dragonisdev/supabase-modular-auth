@@ -30,10 +30,11 @@ cp .env.example .env.local
 3. Configure environment variables:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_API_BASE_URL=
+FRONTEND_PROXY_TARGET=http://localhost:3000
 
-# Optional: same-origin proxy (recommended for Safari)
-# FRONTEND_PROXY_TARGET=http://localhost:3000
+# Optional cross-origin fallback:
+# NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
 ```
 
 4. Start the development server:
@@ -48,7 +49,6 @@ The app will be available at `http://localhost:3001`
 
 - `/` - Home page with navigation links
 - `/register` - User registration
-- `/login` - User login
 - `/login` - User login (includes Google OAuth button)
 - `/forgot-password` - Request password reset
 - `/reset-password` - Reset password with token
@@ -89,3 +89,4 @@ if (response.success && response.data?.url) {
 - Always use `credentials: 'include'` in fetch requests
 - Auth state is determined by API responses only
 - Admin UI relies on `/auth/me` returning `is_admin` in the user payload
+- Same-origin mode proxies browser `/api/admin/*` calls to backend `/admin/*` routes

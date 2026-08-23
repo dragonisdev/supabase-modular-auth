@@ -175,7 +175,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 
 **Common Optional**
 
-- `BACKEND_URL`, `PORT`, `NODE_ENV`
+- `BACKEND_URL` (public OAuth callback origin; use the frontend origin in proxy mode), `PORT`, `NODE_ENV`
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
@@ -185,11 +185,15 @@ See `backend/.env.example` for the canonical list.
 
 ### Frontend (`frontend/.env.local`)
 
-- `NEXT_PUBLIC_API_BASE_URL` (must point to backend)
+- Recommended: set `FRONTEND_PROXY_TARGET` to the backend origin and leave `NEXT_PUBLIC_API_BASE_URL` empty.
+- In proxy mode, auth uses browser `/auth/*` paths and admin API calls use `/api/admin/*` to avoid collisions with Next.js admin pages.
+- Optional cross-origin fallback: set `NEXT_PUBLIC_API_BASE_URL` directly to the backend.
 
 ---
 
 ## Commands
+
+Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned pnpm version is declared in the root `package.json`.
 
 ### Repo root (workspaces)
 

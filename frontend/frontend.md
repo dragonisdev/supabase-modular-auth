@@ -6,9 +6,10 @@
 
 ## Environment
 
-- `NEXT_PUBLIC_API_BASE_URL` is the only required variable for API calls.
-- **Optional**: `FRONTEND_PROXY_TARGET` enables same-origin proxying for Safari-friendly cookies.
-- When using proxying, set `NEXT_PUBLIC_API_BASE_URL` to empty/undefined to use relative `/auth/*` paths.
+- `FRONTEND_PROXY_TARGET` enables the recommended same-origin proxy for first-party cookies.
+- Leave `NEXT_PUBLIC_API_BASE_URL` empty/undefined in proxy mode.
+- Browser auth calls use `/auth/*`; browser admin API calls use `/api/admin/*` to avoid collisions with Next.js `/admin/*` pages.
+- `NEXT_PUBLIC_API_BASE_URL` remains an optional direct, cross-origin fallback.
 - Always send `credentials: 'include'` on fetch to carry cookies.
 
 ## Security rules
@@ -58,11 +59,11 @@
 
 - `/admin/users`
   - Admin user management table.
-  - Uses `/admin/users`, `/admin/users/:id/*`, and `/admin/users/bulk`.
+  - Uses browser `/api/admin/users*` paths in proxy mode, rewritten to backend `/admin/users*`.
 
 - `/admin/audit`
   - Admin audit feed.
-  - Uses `GET /admin/audit-logs`.
+  - Uses browser `GET /api/admin/audit-logs` in proxy mode, rewritten to backend `/admin/audit-logs`.
 
 - `/logout`
   - POST `/auth/logout` with credentials.
@@ -71,7 +72,7 @@
 ## API usage patterns
 
 - All requests: `credentials: 'include'` and `Content-Type: application/json` for POST bodies.
-- When using `FRONTEND_PROXY_TARGET`, call `/auth/*` relative routes so cookies remain first-party.
+- When using `FRONTEND_PROXY_TARGET`, call `/auth/*` and `/api/admin/*` relative routes so cookies remain first-party.
 - Never reuse cached auth state; rely on fresh `/auth/me` when rendering protected areas.
 - Handle rate-limit responses generically ("Please try again later").
 - Prefer `AbortController` for in-flight requests when navigating away.
@@ -95,7 +96,7 @@
 
 Safari blocks many third-party cookies. If frontend and backend are on **different sites**, HttpOnly cookies may not be stored.
 
-**Recommended approach:** set `FRONTEND_PROXY_TARGET` and use relative `/auth/*` calls to keep cookies first-party.
+**Recommended approach:** set `FRONTEND_PROXY_TARGET` and use relative `/auth/*` and `/api/admin/*` calls to keep cookies first-party.
 
 When using the proxy, set `NEXT_PUBLIC_API_BASE_URL` to an empty string (or omit it) so the client calls relative paths.
 
