@@ -17,6 +17,8 @@
 - Never call Supabase directly; only talk to the backend API.
 - Never store tokens in localStorage/sessionStorage; rely on HttpOnly cookies.
 - Do not decode/inspect JWTs; trust backend responses.
+- Session refresh is transparent: protected API calls may rotate the backend-managed access and refresh cookies without exposing tokens to React.
+- Treat `SERVICE_UNAVAILABLE` and `CONNECTION_FAILED` as retryable session checks; do not redirect to login or discard the browser session.
 - Redirect to `/login` on `401` from protected calls.
 
 ## Pages & behaviors

@@ -53,3 +53,9 @@ export class UnauthorizedError extends AppError {
     super(401, ErrorCode.UNAUTHORIZED, message);
   }
 }
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message: string = "Authentication service temporarily unavailable") {
+    super(503, ErrorCode.SERVICE_UNAVAILABLE, message);
+  }
+}

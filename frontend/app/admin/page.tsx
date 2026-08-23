@@ -5,7 +5,7 @@ import type { AuthUser } from "@supabase-modular-auth/types";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { api } from "@/lib/api";
+import { api, getErrorMessage, isSessionUnavailable } from "@/lib/api";
 
 export default function AdminHomePage() {
   const router = useRouter();
@@ -13,6 +13,11 @@ export default function AdminHomePage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   const handleBack = useCallback(() => {
     router.push("/dashboard");
@@ -32,6 +37,11 @@ export default function AdminHomePage() {
 
       if (!response.success || !response.data?.user) {
         setAccessChecked(true);
+        setLoading(false);
+        if (isSessionUnavailable(response)) {
+          setError(getErrorMessage(response));
+          return;
+        }
         router.push("/login");
         return;
       }
@@ -60,6 +70,24 @@ export default function AdminHomePage() {
   }
 
   if (!isAdmin || !user || loading) {
+    if (error) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+          <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-md">
+            <h1 className="text-xl font-semibold text-black">Session check unavailable</h1>
+            <p className="mt-3 text-sm text-gray-600">{error}</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="mt-5 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+            >
+              Try again
+            </button>
+          </div>
+        </main>
+      );
+    }
+
     return null;
   }
 
