@@ -2,7 +2,7 @@
 
 This repo is a **monorepo** for a Supabase-auth-backed system with:
 
-- **Backend**: Stateless Express API (TypeScript) in `backend/`
+- **Backend**: Session-stateless Express API (TypeScript) with documented process-local security state in `backend/`
 - **Frontend**: Minimal Next.js 16 App Router demo in `frontend/`
 - **Shared types**: Zod schemas + API types in `types/`
 
@@ -43,8 +43,14 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 ├─ openapi/            # OpenAPI 3.1 source contract
 ├─ test/               # Mocked, contract, database, and opt-in live tests
 ├─ types/              # Shared schemas + generated API contract types
+├─ docs/               # Architecture, setup, configuration, and operations
+├─ compose.yaml        # Local container development stack
+├─ compose.production.yaml # Single-VM production baseline
 └─ .github/workflows/  # Continuous integration
 ```
+
+User-facing documentation is indexed from `docs/README.md`. Keep the root `README.md` concise and
+keep `AGENTS.md` at the repository root for discovery.
 
 ---
 
@@ -100,8 +106,8 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 
 ### Token handling
 
-- Supabase sends reset/verify tokens in the URL **hash** (`#access_token=...`).
-- The frontend parses the hash and sends the token to `/auth/reset-password`.
+- Supabase can send reset tokens in the URL **hash** (`#access_token=...`).
+- The reset page parses the hash and sends the token to `/auth/reset-password`; the verification page only interprets the callback result and redirects to login.
 
 ---
 
@@ -129,7 +135,7 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /auth/forgot-password`
 - `POST /auth/reset-password`
 - `GET /auth/google/url`
-- `GET /auth/google/callback` (called by Google, not frontend)
+- `GET /auth/google/callback` (Supabase redirects the browser here through the frontend proxy)
 
 ### Protected
 
@@ -212,8 +218,12 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - `pnpm test` — run deterministic mocked, contract, and static database tests
 - `pnpm test:type-check` — typecheck the root test suite
 - `pnpm test:coverage` — run the default suite with coverage
-- `pnpm api:check` — regenerate the OpenAPI TypeScript contract and fail on drift
+- `pnpm api:check` — generate the OpenAPI TypeScript contract in memory and fail on drift
 - `pnpm test:database` — include live migration/RLS checks when `TEST_DATABASE_URL` is set
+- `pnpm compose:check` — validate development and production Compose files
+- `pnpm compose:dev` — build and run the local container stack
+- `pnpm compose:watch` — run the local stack with Compose source synchronization
+- `pnpm compose:prod` — build and run the single-VM production baseline
 
 ### Backend
 

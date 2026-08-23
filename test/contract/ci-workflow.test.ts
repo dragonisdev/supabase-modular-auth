@@ -49,6 +49,7 @@ describe("CI workflow contract", () => {
         "pnpm type-check",
         "pnpm test:type-check",
         "pnpm api:check",
+        "pnpm compose:check",
         "pnpm test:coverage",
         "pnpm build",
       ]),
@@ -80,5 +81,14 @@ describe("CI workflow contract", () => {
       /^postgres:[^@]+@sha256:[0-9a-f]{64}$/,
     );
     expect(getRunSteps(workflow.jobs?.database)).toContain("pnpm test:database");
+  });
+
+  it("builds both production container images", () => {
+    expect(getRunSteps(workflow.jobs?.containers)).toEqual(
+      expect.arrayContaining([
+        "docker build --file backend/Dockerfile --tag supabase-saas-backend:ci .",
+        "docker build --file frontend/Dockerfile --tag supabase-saas-frontend:ci .",
+      ]),
+    );
   });
 });

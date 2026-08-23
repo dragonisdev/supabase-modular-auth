@@ -1,0 +1,67 @@
+# Environment variables and secrets
+
+The checked-in `.env.example` files are canonical. Never put real credentials in an example, Docker image, client bundle, log, test fixture, or pull request.
+
+## Backend required values
+
+| Variable                    | Sensitive     | Purpose                                                      |
+| --------------------------- | ------------- | ------------------------------------------------------------ |
+| `SUPABASE_URL`              | No            | Supabase project origin                                      |
+| `SUPABASE_ANON_KEY`         | Low privilege | Backend Auth client key; currently not needed in the browser |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Critical**  | Privileged admin operations; backend only                    |
+| `FRONTEND_URL`              | No            | Exact allowed browser origin for CORS and redirects          |
+
+`BACKEND_URL` is optional in validation but required for OAuth. In same-origin proxy mode it must be the public frontend origin, because that is where the callback and host-only cookies belong.
+
+Use exact origins with no trailing slash for `FRONTEND_URL` and `BACKEND_URL`, for example `https://app.example.com`. CORS compares origins exactly, and callback paths are appended to these values.
+
+## Backend optional values
+
+| Group          | Variables                                                                                  | Defaults/notes                                                                |
+| -------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Server         | `PORT`, `NODE_ENV`, `BACKEND_URL`                                                          | `3000`, `development`; production must use literal `production`               |
+| Cookies        | `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS` | Refresh lifetime defaults to 7 days; leave domain unset for `__Host-` cookies |
+| CSRF cookie    | `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE`                                              | `strict`; secure flag inherits auth-cookie setting                            |
+| General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`        | See `backend/.env.example`                                                    |
+| Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`              | Process-local until Redis work lands                                          |
+| HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                    | Proxy hops must match the real topology                                       |
+
+Production startup rejects insecure auth cookies. Recommended same-origin values are:
+
+```env
+NODE_ENV=production
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=lax
+CSRF_COOKIE_SAME_SITE=strict
+CSRF_COOKIE_SECURE=true
+COOKIE_MAX_AGE_DAYS=7
+```
+
+Set `TRUST_PROXY` from the forwarding entries Express actually receives, not from the number of physical proxies. The checked-in Next.js rewrite path starts at one represented trusted hop because Next.js is the immediate peer and preserves the sanitized client forwarding value. Verify this in each environment because client IP identity drives rate limiting, lockout, and audit context.
+
+## Frontend values
+
+| Variable                   | Exposure                  | Purpose                                                          |
+| -------------------------- | ------------------------- | ---------------------------------------------------------------- |
+| `FRONTEND_PROXY_TARGET`    | Next.js server/build only | Private Express origin used by rewrites                          |
+| `NEXT_PUBLIC_API_BASE_URL` | Browser-visible           | Optional direct cross-origin fallback; leave empty in proxy mode |
+| `PORT`                     | Runtime                   | Production Next.js listen port                                   |
+
+Anything prefixed `NEXT_PUBLIC_` can be embedded in browser JavaScript and must never contain a secret.
+
+## Test-only values
+
+- `TEST_DATABASE_URL` must point to a disposable PostgreSQL database.
+- `RUN_LIVE_SUPABASE_TESTS=true` opts into live auth mutation.
+- `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_SERVICE_ROLE_KEY` must belong to a dedicated test project.
+- Remote live tests additionally require `ALLOW_REMOTE_SUPABASE_TESTS=true`.
+
+## Secret handling
+
+- Local: use ignored `backend/.env` and `frontend/.env.local` files with restricted filesystem access.
+- Railway/cloud: use the platform secret store and separate values per environment.
+- Docker: Compose reads `backend/.env` at runtime; `.dockerignore` prevents it from entering the build context.
+- CI: use repository/environment secrets only for explicit opt-in live jobs. Default CI requires no Supabase credentials.
+- Rotation: if the service-role key is exposed, rotate it in Supabase immediately, update every environment, redeploy, and review admin/audit activity.
+
+Google provider secrets and SMTP credentials are configured in Supabase, not in the frontend or this repository.

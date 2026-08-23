@@ -57,11 +57,31 @@ jobs:
       - name: Check generated OpenAPI contract
         run: pnpm api:check
 
+      - name: Validate Docker Compose configuration
+        run: pnpm compose:check
+
       - name: Run tests with coverage
         run: pnpm test:coverage
 
       - name: Build production packages
         run: pnpm build
+
+  containers:
+    name: Container images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build backend image
+        run: docker build --file backend/Dockerfile --tag supabase-saas-backend:ci .
+
+      - name: Build frontend image
+        run: docker build --file frontend/Dockerfile --tag supabase-saas-frontend:ci .
 
   database:
     name: Supabase migration and RLS tests
