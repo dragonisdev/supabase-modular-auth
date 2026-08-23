@@ -43,11 +43,11 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Lint
-        run: pnpm lint
-
       - name: Type-check workspaces
         run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
 
       - name: Type-check tests
         run: pnpm test:type-check

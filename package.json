@@ -20,7 +20,7 @@
     "test:live": "vitest run test/live",
     "test:type-check": "tsc --noEmit -p test/tsconfig.json",
     "test:watch": "vitest",
-    "type-check": "pnpm -r --parallel type-check"
+    "type-check": "pnpm --filter types build && pnpm -r --parallel type-check"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",

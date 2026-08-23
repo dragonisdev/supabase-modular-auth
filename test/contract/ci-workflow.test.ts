@@ -21,6 +21,9 @@ interface Workflow {
 const workflow = parse(
   readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8"),
 ) as Workflow;
+const packageJson = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { scripts?: Record<string, string> };
 
 const getRunSteps = (job: WorkflowJob | undefined): string[] =>
   job?.steps?.flatMap((step) => (step.run ? [step.run] : [])) ?? [];
@@ -49,6 +52,10 @@ describe("CI workflow contract", () => {
         "pnpm build",
       ]),
     );
+  });
+
+  it("builds shared declarations before checking workspace consumers", () => {
+    expect(packageJson.scripts?.["type-check"]).toMatch(/^pnpm --filter types build && /);
   });
 
   it("pins third-party actions to immutable commit SHAs", () => {
