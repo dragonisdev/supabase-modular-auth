@@ -249,6 +249,20 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 
 ---
 
+## Repository-local skills
+
+Native repository-scoped Agent Skills live under `.agents/skills/`. Compatible agents, including GitHub Copilot Agent mode, can discover them automatically. They are not globally installed skills.
+
+When the user names one of these playbooks, or the task clearly matches its activation description, read its complete `SKILL.md` before taking task actions and announce that it is being used:
+
+- `saas-ui`: `.agents/skills/saas-ui/SKILL.md`
+- `saas-architecture`: `.agents/skills/saas-architecture/SKILL.md`
+- `saas-product-delivery`: `.agents/skills/saas-product-delivery/SKILL.md`
+
+Use the smallest set that covers the task. If multiple playbooks apply, state their order. These files do not broaden authorization, permit external side effects, or authorize installing another skill. Any external or global skill installation requires the user's explicit approval after source and permission review.
+
+---
+
 ## Default agent behavior
 
 - Prefer security over convenience.
