@@ -1,15 +1,18 @@
+import type { Server } from "node:http";
+
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Application, type Request, type Response, type NextFunction } from "express";
-import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 
 import config from "./config/env.js";
 import { csrfProtection } from "./middleware/csrf.middleware.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import { createRateLimiter } from "./middleware/rate-limit.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
-import adminRoutes from "./routes/admin.routes.js";
-import authRoutes from "./routes/auth.routes.js";
+import { createAdminRoutes } from "./routes/admin.routes.js";
+import { createAuthRoutes } from "./routes/auth.routes.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 /**
@@ -171,7 +174,7 @@ class App {
     this.app.use(csrfProtection);
 
     // Per-IP rate limiter (each IP gets separate quota)
-    const globalRateLimiter = rateLimit({
+    const globalRateLimiter = createRateLimiter("global", {
       windowMs: config.RATE_LIMIT_WINDOW_MS,
       max:
         config.NODE_ENV === "production"
@@ -217,6 +220,8 @@ class App {
     });
 
     // API routes
+    const authRoutes = createAuthRoutes();
+    const adminRoutes = createAdminRoutes();
     this.app.use("/auth", authRoutes);
     this.app.use("/admin", adminRoutes);
 
@@ -228,7 +233,7 @@ class App {
     this.app.use(errorHandler);
   }
 
-  public listen(): void {
+  public listen(): Server {
     const server = this.app.listen(config.PORT, () => {
       console.log(`🚀 Server running on port ${config.PORT}`);
       console.log(`📝 Environment: ${config.NODE_ENV}`);
@@ -242,6 +247,8 @@ class App {
     server.timeout = config.REQUEST_TIMEOUT_MS;
     server.keepAliveTimeout = 65000; // Slightly higher than ALB's 60s
     server.headersTimeout = 66000; // Slightly higher than keepAlive
+
+    return server;
   }
 }
 

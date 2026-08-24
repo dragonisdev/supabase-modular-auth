@@ -12,6 +12,8 @@ Next.js + Express
   -> shared Zod schemas and API types
 Express routes
   <-> OpenAPI contract and contract tests
+Express rate limiters
+  -> shared Redis counters in production
 ```
 
 ## Trust boundaries
@@ -35,6 +37,6 @@ Express routes
 
 - There is no product-specific schema or branding.
 - User/admin roles exist, but substantive multi-tenant membership and tenant-owned product tables do not yet exist.
-- Process-local rate limiting, lockout state, OAuth PKCE state, and audit fallback limit safe backend scaling to one replica until shared storage is added.
+- Redis coordinates rate-limit counters across instances, but process-local lockout state, OAuth PKCE state, and the audit fallback still limit safe backend scaling to one replica.
 
 See [Backend](backend.md), [Frontend](frontend.md), and [Authentication](authentication.md) for component details.

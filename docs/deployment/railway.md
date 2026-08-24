@@ -2,6 +2,8 @@
 
 Deploy two services from the same repository and Railway project. Do not set `/frontend` or `/backend` as an isolated root directory: this shared pnpm monorepo requires `types/`, `pnpm-workspace.yaml`, and the root lockfile.
 
+Add a private Redis database service from Railway's Redis template. Do not enable its public TCP proxy. The backend references the template's private `REDIS_URL`; the frontend does not receive Redis variables.
+
 ## Backend service
 
 - Build command: `pnpm --filter @supabase-modular-auth/types build && pnpm --filter @supabase-modular-auth/backend build`
@@ -26,6 +28,7 @@ CSRF_COOKIE_SAME_SITE=strict
 CSRF_COOKIE_SECURE=true
 COOKIE_MAX_AGE_DAYS=7
 TRUST_PROXY=1
+REDIS_URL=${{Redis.REDIS_URL}}
 ```
 
 Leave `COOKIE_DOMAIN` unset.
@@ -51,4 +54,4 @@ The reference namespace must match the actual backend service name. Browser clie
 
 After both services deploy, verify registration, confirmation, login, session rotation, logout, reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
 
-Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
+Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [Redis](https://docs.railway.com/databases/redis), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).

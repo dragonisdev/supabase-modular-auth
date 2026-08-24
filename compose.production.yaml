@@ -1,6 +1,25 @@
 name: supabase-saas-starter
 
 services:
+  redis:
+    image: redis:8.10.0-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--loglevel", "warning"]
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - rate-limit
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /data
+
   backend:
     build:
       context: .
@@ -15,6 +34,7 @@ services:
       CSRF_COOKIE_SECURE: "true"
       NODE_ENV: production
       PORT: "3000"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     expose:
       - "3000"
     healthcheck:
@@ -30,6 +50,12 @@ services:
       retries: 10
       start_period: 10s
     init: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - application
+      - rate-limit
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -64,6 +90,13 @@ services:
       backend:
         condition: service_healthy
     init: true
+    networks:
+      - application
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+
+networks:
+  application:
+  rate-limit:
+    internal: true
