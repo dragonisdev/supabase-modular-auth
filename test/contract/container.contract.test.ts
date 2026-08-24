@@ -67,5 +67,6 @@ describe("container contract", () => {
     expect(dockerignore).toContain("**/.npmrc");
     expect(dockerignore).toContain("**/*.key");
     expect(dockerignore).toContain("**/*.pem");
+    expect(dockerignore).toMatch(/^database$/m);
   });
 });

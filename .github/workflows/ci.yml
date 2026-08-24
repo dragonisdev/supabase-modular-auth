@@ -86,26 +86,11 @@ jobs:
   database:
     name: Supabase migration and RLS tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    services:
-      postgres:
-        # PostgreSQL 17.11 Alpine 3.24, pinned for the hosted linux/amd64 runner.
-        image: postgres:17-alpine@sha256:7456ef82e5f5bc43d997f4781bbd7c0d6389bff397564649a356e206ba473aee
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    timeout-minutes: 20
 
     env:
-      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      ALLOW_DATABASE_CLUSTER_MUTATIONS: "true"
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
     steps:
       - name: Check out repository
@@ -125,5 +110,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Apply migrations and verify database security
+      - name: Start Supabase database and apply migrations
+        run: pnpm supabase:start
+
+      - name: Lint Supabase schema
+        run: pnpm supabase:lint
+
+      - name: Run Supabase pgTAP security tests
+        run: pnpm supabase:test
+
+      - name: Verify migration behavior in a disposable database
         run: pnpm test:database
+
+      - name: Stop Supabase database
+        if: always()
+        run: pnpm supabase:stop

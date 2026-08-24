@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 interface WorkflowStep {
+  if?: string;
   run?: string;
   uses?: string;
   with?: Record<string, unknown>;
 }
 
 interface WorkflowJob {
+  env?: Record<string, string>;
   services?: Record<string, { image?: string }>;
   steps?: WorkflowStep[];
 }
@@ -24,7 +26,7 @@ const workflow = parse(
 ) as Workflow;
 const packageJson = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
-) as { scripts?: Record<string, string> };
+) as { devDependencies?: Record<string, string>; scripts?: Record<string, string> };
 
 const getRunSteps = (job: WorkflowJob | undefined): string[] =>
   job?.steps?.flatMap((step) => (step.run ? [step.run] : [])) ?? [];
@@ -76,11 +78,25 @@ describe("CI workflow contract", () => {
     expect(checkoutSteps.every((step) => step.with?.["persist-credentials"] === false)).toBe(true);
   });
 
-  it("runs migration and RLS tests against disposable PostgreSQL", () => {
-    expect(workflow.jobs?.database?.services?.postgres?.image).toMatch(
-      /^postgres:[^@]+@sha256:[0-9a-f]{64}$/,
+  it("validates migrations through a pinned local Supabase database", () => {
+    const databaseJob = workflow.jobs?.database;
+    const runSteps = getRunSteps(databaseJob);
+    const cleanup = databaseJob?.steps?.find((step) => step.run === "pnpm supabase:stop");
+
+    expect(packageJson.devDependencies?.supabase).toBe("2.115.0");
+    expect(databaseJob?.services).toBeUndefined();
+    expect(databaseJob?.env?.ALLOW_DATABASE_CLUSTER_MUTATIONS).toBe("true");
+    expect(databaseJob?.env?.TEST_DATABASE_URL).toContain("127.0.0.1:54322");
+    expect(runSteps).toEqual(
+      expect.arrayContaining([
+        "pnpm supabase:start",
+        "pnpm supabase:lint",
+        "pnpm supabase:test",
+        "pnpm test:database",
+        "pnpm supabase:stop",
+      ]),
     );
-    expect(getRunSteps(workflow.jobs?.database)).toContain("pnpm test:database");
+    expect(cleanup?.if).toBe("always()");
   });
 
   it("builds both production container images", () => {

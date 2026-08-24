@@ -1,5 +1,4 @@
--- Persistent admin audit log table for backend moderation/admin events.
--- Apply this script in Supabase SQL Editor.
+-- Durable, service-role-only admin audit logging.
 
 create extension if not exists pgcrypto;
 
@@ -33,8 +32,8 @@ create index if not exists admin_audit_logs_target_created_at_idx
 
 alter table public.admin_audit_logs enable row level security;
 
--- No anon/authenticated access; backend service role only.
-revoke all on public.admin_audit_logs from public, anon, authenticated;
+-- Browser roles receive no audit-log privileges; only the backend service role can read and append.
+revoke all on public.admin_audit_logs from public, anon, authenticated, service_role;
 grant select, insert on public.admin_audit_logs to service_role;
 
 create or replace function public.prevent_admin_audit_logs_mutation()
@@ -55,6 +54,8 @@ begin
   return old;
 end;
 $$;
+
+revoke all on function public.prevent_admin_audit_logs_mutation() from public, anon, authenticated;
 
 drop trigger if exists admin_audit_logs_prevent_mutation on public.admin_audit_logs;
 create trigger admin_audit_logs_prevent_mutation
@@ -82,11 +83,3 @@ $$;
 
 revoke all on function public.admin_purge_audit_logs(integer) from public, anon, authenticated;
 grant execute on function public.admin_purge_audit_logs(integer) to service_role;
-
--- ENABLE LATER
--- Schedule purge of old audit logs (older than 180 days) every 6 hours, requires pg_cron extension.
--- select cron.schedule(
---   'admin-audit-retention',
---   '0 */6 * * *',
---   $$select public.admin_purge_audit_logs(180);$$
--- );

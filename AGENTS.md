@@ -42,6 +42,7 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 │  └─ lib/             # API client
 ├─ test/               # Mocked, contract, database, and opt-in live tests
 ├─ types/              # Shared schemas + generated API contract types
+├─ database/           # Supabase CLI project, migrations, pgTAP tests, and operator queries
 ├─ docs/               # Guides plus the OpenAPI 3.1 source contract and checker
 ├─ compose.yaml        # Local container development stack
 ├─ compose.production.yaml # Single-VM production baseline
@@ -245,6 +246,9 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - The backend is strict about payload sizes and timeouts (`MAX_REQUEST_SIZE`, `REQUEST_TIMEOUT_MS`).
 - There is no tenant-owned product table yet. The migration tests require RLS and a policy for any
   future table containing `tenant_id`; add two-tenant behavioral tests with the first such schema.
+- `database/` is the only tracked SQL root. Treat `database/supabase/migrations/` as ordered,
+  immutable history after application. Files in `database/queries/` are manual operator tools and
+  must never run as migrations or seeds.
 - **Safari/ITP** may block third‑party cookies. Prefer same-origin proxying via `FRONTEND_PROXY_TARGET` or keep frontend/backend on the same site.
 
 ---

@@ -1,0 +1,28 @@
+# Database
+
+`database/` is the canonical home for every tracked SQL file and the Supabase CLI workdir.
+
+```text
+database/
+├─ queries/                 # Manual operator queries; never applied automatically
+│  └─ admin/
+└─ supabase/
+   ├─ config.toml           # Secret-free local Supabase configuration
+   ├─ migrations/           # Ordered, immutable schema migrations
+   └─ tests/                # pgTAP database security tests
+```
+
+Run the local migration checks from the repository root:
+
+```bash
+pnpm supabase:start
+pnpm supabase:lint
+pnpm supabase:test
+pnpm supabase:stop
+```
+
+`supabase:start` requires a running Docker engine. It starts only the local PostgreSQL service and applies `database/supabase/migrations/` in timestamp order.
+
+Migration filenames use `YYYYMMDDHHmmss_description.sql`. Once a migration has been applied to any shared environment, do not rename, edit, or reorder it; add a later migration instead.
+
+Files under `queries/` are reviewed operational tools, not migrations or seed data. They must default to a no-op or explicit failure, contain no live identifiers, and report whether the intended row was affected. See the [database operations guide](../docs/database/migrations.md) before running one.

@@ -29,6 +29,7 @@ Express routes
 | `backend/`  | HTTP API, security policy, Supabase access, admin operations |
 | `types/`    | Shared Zod schemas, response types, generated OpenAPI types  |
 | `docs/api/` | Canonical HTTP operation and payload contract                |
+| `database/` | Supabase migrations, database tests, and operator queries    |
 
 ## Intentional limits
 

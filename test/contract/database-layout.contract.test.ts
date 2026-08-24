@@ -1,0 +1,78 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+import { databaseRoot, repositoryRoot } from "../helpers/database-files.js";
+
+const ignoredDirectories = new Set([
+  ".git",
+  ".next",
+  ".pnpm-store",
+  ".temp",
+  "coverage",
+  "dist",
+  "node_modules",
+]);
+
+const collectSqlFiles = (directory: string): string[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      return ignoredDirectories.has(entry.name) ? [] : collectSqlFiles(path);
+    }
+
+    return entry.isFile() && entry.name.endsWith(".sql") ? [path] : [];
+  });
+
+const repositorySqlFiles = collectSqlFiles(repositoryRoot).map((path) =>
+  relative(repositoryRoot, path).replaceAll("\\", "/"),
+);
+
+const readDatabaseFile = (path: string): string =>
+  readFileSync(resolve(databaseRoot, path), "utf8");
+
+describe("database layout contract", () => {
+  it("keeps every repository SQL file in the canonical database tree", () => {
+    expect(repositorySqlFiles).toEqual(
+      expect.arrayContaining([
+        "database/queries/admin/inspect_user_metadata.sql",
+        "database/queries/admin/promote_user_to_admin.sql",
+        "database/supabase/migrations/20260311000000_admin_audit_logs.sql",
+        "database/supabase/tests/admin_audit_logs.test.sql",
+      ]),
+    );
+    expect(repositorySqlFiles.every((path) => path.startsWith("database/"))).toBe(true);
+  });
+
+  it("keeps admin operator queries free of live identifiers", () => {
+    for (const path of [
+      "queries/admin/inspect_user_metadata.sql",
+      "queries/admin/promote_user_to_admin.sql",
+    ]) {
+      expect(readDatabaseFile(path)).not.toMatch(
+        /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i,
+      );
+    }
+  });
+
+  it("makes the admin promotion query fail closed", () => {
+    const query = readDatabaseFile("queries/admin/promote_user_to_admin.sql").toLowerCase();
+
+    expect(query).toContain("target_user_id uuid := null::uuid");
+    expect(query).toContain("coalesce(raw_app_meta_data, '{}'::jsonb)");
+    expect(query).toContain("jsonb_build_object('role', 'admin', 'is_admin', true)");
+    expect(query).toContain("get diagnostics affected_rows = row_count");
+    expect(query).toContain("if affected_rows <> 1");
+    expect(query).toContain("raise exception");
+  });
+
+  it("keeps local Supabase configuration aligned with application auth", () => {
+    const config = readDatabaseFile("supabase/config.toml");
+
+    expect(config).toContain('project_id = "supabase-saas-starter"');
+    expect(config).toContain('site_url = "http://localhost:3001"');
+    expect(config).toMatch(/\[db\.seed\][\s\S]*?enabled = false/);
+    expect(config).toMatch(/\[auth\.email\][\s\S]*?enable_confirmations = true/);
+  });
+});

@@ -1,16 +1,6 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migrationsDirectory = resolve("backend/supabase/migrations");
-const migrationFiles = readdirSync(migrationsDirectory)
-  .filter((file) => file.endsWith(".sql"))
-  .toSorted();
-
-const migrations = migrationFiles.map((file) => ({
-  file,
-  sql: readFileSync(resolve(migrationsDirectory, file), "utf8"),
-}));
+import { migrationFiles } from "../helpers/database-files.js";
 
 const normalizeSql = (sql: string): string =>
   sql.replace(/--.*$/gm, "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -18,13 +8,20 @@ const normalizeSql = (sql: string): string =>
 describe("Supabase migration policy", () => {
   it("has at least one versioned migration", () => {
     expect(migrationFiles).not.toHaveLength(0);
-    expect(migrationFiles.every((file) => /^\d+_[a-z0-9_]+\.sql$/.test(file))).toBe(true);
+    expect(
+      migrationFiles.every((migration) =>
+        /^\d{14}_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/.test(migration.file),
+      ),
+    ).toBe(true);
+    expect(new Set(migrationFiles.map((migration) => migration.version)).size).toBe(
+      migrationFiles.length,
+    );
   });
 
   it("enables RLS for every public table created by a migration", () => {
     const missingRls: string[] = [];
 
-    for (const migration of migrations) {
+    for (const migration of migrationFiles) {
       const sql = normalizeSql(migration.sql);
       const createdTables = [
         ...sql.matchAll(/create table(?: if not exists)? public\.([a-z_][a-z0-9_]*)/g),
@@ -41,18 +38,23 @@ describe("Supabase migration policy", () => {
   });
 
   it("keeps the audit log service-role-only and append-only", () => {
-    const auditMigration = migrations.find((migration) =>
+    const auditMigration = migrationFiles.find((migration) =>
       migration.sql.includes("public.admin_audit_logs"),
     );
 
     expect(auditMigration, "admin_audit_logs migration is missing").toBeDefined();
 
     const sql = normalizeSql(auditMigration?.sql ?? "");
-    expect(sql).toContain("revoke all on public.admin_audit_logs from public, anon, authenticated");
+    expect(sql).toContain(
+      "revoke all on public.admin_audit_logs from public, anon, authenticated, service_role",
+    );
     expect(sql).toContain("grant select, insert on public.admin_audit_logs to service_role");
     expect(sql).toContain("before update or delete on public.admin_audit_logs");
     expect(sql).toContain("raise exception 'admin_audit_logs is append-only'");
     expect(sql).toContain("security definer");
+    expect(sql).toContain(
+      "revoke all on function public.prevent_admin_audit_logs_mutation() from public, anon, authenticated",
+    );
     expect(sql).toContain(
       "revoke all on function public.admin_purge_audit_logs(integer) from public, anon, authenticated",
     );
@@ -61,7 +63,7 @@ describe("Supabase migration policy", () => {
   it("requires tenant-owned tables to declare both RLS and a policy", () => {
     const missingTenantPolicy: string[] = [];
 
-    for (const migration of migrations) {
+    for (const migration of migrationFiles) {
       const sql = normalizeSql(migration.sql);
       const tableDefinitions = [
         ...sql.matchAll(/create table(?: if not exists)? public\.([a-z_][a-z0-9_]*)\s*\((.*?)\);/g),
