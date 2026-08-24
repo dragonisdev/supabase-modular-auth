@@ -49,6 +49,24 @@ const envSchema = z.object({
     .transform(Number)
     .optional()
     .default(20), // Stricter for production
+  REDIS_URL: z
+    .url()
+    .refine((value) => ["redis:", "rediss:"].includes(new URL(value).protocol), {
+      message: "Must use the redis:// or rediss:// protocol",
+    })
+    .optional(),
+  REDIS_KEY_PREFIX: z
+    .string()
+    .regex(/^[A-Za-z0-9:_-]+$/)
+    .optional()
+    .default("supabase-saas:rate-limit:"),
+  REDIS_CONNECT_TIMEOUT_MS: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .refine((value) => value > 0, { message: "Must be greater than zero" })
+    .optional()
+    .default(5000),
 
   // Security
   TRUST_PROXY: z
@@ -106,6 +124,10 @@ try {
       warnings.push(
         "TRUST_PROXY is false - rate limiting may not work correctly behind a reverse proxy",
       );
+    }
+
+    if (!config.REDIS_URL) {
+      errors.push("REDIS_URL is required in production for shared rate limiting");
     }
 
     // Check for common development values in production

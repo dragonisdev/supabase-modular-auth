@@ -2,7 +2,7 @@
 
 This repo is a **monorepo** for a Supabase-auth-backed system with:
 
-- **Backend**: Session-stateless Express API (TypeScript) with documented process-local security state in `backend/`
+- **Backend**: Session-stateless Express API (TypeScript) with Redis-backed rate limits and documented remaining process-local security state in `backend/`
 - **Frontend**: Minimal Next.js 16 App Router demo in `frontend/`
 - **Shared types**: Zod schemas + API types in `types/`
 
@@ -33,7 +33,7 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 │  │  ├─ controllers/  # auth logic
 │  │  ├─ middleware/   # auth, csrf, error, request-id
 │  │  ├─ routes/       # API routes
-│  │  ├─ services/     # Supabase + lockout
+│  │  ├─ services/     # Supabase + rate-limit/lockout state
 │  │  ├─ utils/        # errors, response, logger
 │  │  └─ validators/   # input validation (zod + zxcvbn)
 ├─ frontend/           # Next.js App Router demo
@@ -87,7 +87,8 @@ keep `AGENTS.md` at the repository root for discovery.
 - Global limiter (100/15min dev, stricter in prod).
 - Auth limiter (default 5/15min).
 - Sensitive limiter for reset/forgot endpoints (half of auth limit, min 3).
-- **Lockout** is in-memory with exponential backoff; use Redis in multi-instance prod.
+- Production rate-limit counters use Redis and fail closed if the store is unavailable; development/test may deliberately use process memory.
+- **Lockout** remains in-memory with exponential backoff; move it to shared storage before multi-instance production.
 
 ### OAuth state storage
 
@@ -190,6 +191,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - `BACKEND_URL` (public OAuth callback origin; use the frontend origin in proxy mode), `PORT`, `NODE_ENV`
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
+- Redis: `REDIS_URL` (required in production), `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 

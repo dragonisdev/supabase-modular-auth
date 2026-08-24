@@ -25,10 +25,11 @@ middleware -> route -> controller -> service -> Supabase
 - Admin access is derived from server-verified Supabase `app_metadata`.
 - Passwords, tokens, cookies, authorization headers, and service keys must never be logged.
 - CORS currently permits only `GET`, `POST`, and `OPTIONS`; add verbs deliberately if routes change.
+- Production rate-limit counters live in Redis. Startup fails when Redis is absent or unreachable, and requests fail closed with a normalized service-unavailable response during an outage.
 
 ## State and scaling
 
-The HTTP API is mostly stateless, but the current lockout implementation, rate-limit counters, OAuth PKCE state, and audit fallback can be process-local. Keep one backend replica until these are moved to shared/durable storage.
+Rate-limit counters are shared through Redis and therefore remain consistent across backend instances. Account lockout, OAuth PKCE state, and the audit fallback can still be process-local, so keep one backend replica until those remaining boundaries move to shared or durable storage. See the [Redis rate-limiting decision](../decisions/0001-redis-rate-limiting.md).
 
 ## API and data
 
