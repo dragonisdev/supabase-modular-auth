@@ -70,7 +70,7 @@ keep `AGENTS.md` at the repository root for discovery.
 - **Cookie**: `csrf_token` (non-HttpOnly, SameSite=Strict)
 - **Header**: `X-CSRF-Token`
 - **Protected**: all non-GET/HEAD/OPTIONS routes
-- **Excluded**: `/auth/google/callback`, `/health`
+- **Excluded**: `/auth/google/callback`, `/health`, and the raw-body `/billing/webhook` route (Stripe signature required)
 - Frontend initializes CSRF via `GET /auth/csrf-token` (see `CsrfProvider`).
 
 ### Cookies & session
@@ -138,10 +138,14 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /auth/reset-password`
 - `GET /auth/google/url`
 - `GET /auth/google/callback` (Supabase redirects the browser here through the frontend proxy)
+- `POST /billing/webhook` (Stripe signature required; no cookie session or CSRF)
 
 ### Protected
 
 - `GET /auth/me`
+- `GET /billing`
+- `POST /billing/checkout`
+- `POST /billing/portal`
 - `GET /admin/users`
 - `GET /admin/users/:id`
 - `POST /admin/users/create`
@@ -151,12 +155,23 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /admin/users/:id/unban`
 - `POST /admin/users/bulk`
 - `GET /admin/audit-logs`
+- `POST /admin/billing/webhooks/:eventId/replay`
+- `POST /admin/billing/reconcile`
 
 ### Admin authorization
 
 - Admin access is enforced server-side via Supabase `app_metadata`.
 - A user is considered admin when `app_metadata.role === "admin"` or `app_metadata.is_admin === true`.
 - Never trust client-side role flags for authorization.
+
+### Billing
+
+- Billing is optional and disabled until explicitly configured.
+- Stripe Checkout and the customer portal are hosted by Stripe; no card data enters this application.
+- Only backend-configured recurring Price IDs may be checked out.
+- Verify `Stripe-Signature` against the exact raw body before processing a webhook.
+- Stripe is the source of truth. Supabase billing tables are service-role-only projections, not product entitlements.
+- Replay and single-user reconciliation are admin-only and must remain auditable.
 
 ### Response shape
 
@@ -193,6 +208,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
 - Redis: `REDIS_URL` (required in production), `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`
+- Billing: `BILLING_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_IDS`, `STRIPE_WEBHOOK_MAX_SIZE`
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 
@@ -201,7 +217,7 @@ See `backend/.env.example` for the canonical list.
 ### Frontend (`frontend/.env.local`)
 
 - Recommended: set `FRONTEND_PROXY_TARGET` to the backend origin and leave `NEXT_PUBLIC_API_BASE_URL` empty.
-- In proxy mode, auth uses browser `/auth/*` paths and admin API calls use `/api/admin/*` to avoid collisions with Next.js admin pages.
+- In proxy mode, auth uses browser `/auth/*` paths, admin calls use `/api/admin/*`, and billing calls use `/api/billing/*`.
 - Optional cross-origin fallback: set `NEXT_PUBLIC_API_BASE_URL` directly to the backend.
 
 ---

@@ -26,6 +26,7 @@ middleware -> route -> controller -> service -> Supabase
 - Passwords, tokens, cookies, authorization headers, and service keys must never be logged.
 - CORS currently permits only `GET`, `POST`, and `OPTIONS`; add verbs deliberately if routes change.
 - Production rate-limit counters live in Redis. Startup fails when Redis is absent or unreachable, and requests fail closed with a normalized service-unavailable response during an outage.
+- Billing endpoints create Stripe-hosted Checkout and Customer Portal sessions; webhook signatures are verified before billing projections are updated.
 
 ## Lifecycle
 
@@ -37,4 +38,4 @@ Rate-limit counters are shared through Redis and therefore remain consistent acr
 
 ## API and data
 
-The endpoint contract is [OpenAPI](../api.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md).
+The endpoint contract is [OpenAPI](../api.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md). Billing configuration and deferred product decisions are documented in [Stripe billing](../billing/stripe.md).

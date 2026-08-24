@@ -53,6 +53,14 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
     client = new Client({ connectionString: disposableDatabaseUrl.toString() });
     await client.connect();
 
+    await client.query(`
+      create schema auth;
+      create table auth.users (
+        id uuid primary key,
+        email text
+      );
+    `);
+
     await migrationFiles.reduce(async (previousMigration, migration) => {
       await previousMigration;
       await client.query(migration.sql);
@@ -83,13 +91,30 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
   });
 
   it("applies every migration to a fresh database", async () => {
-    const result = await client.query<{ table_name: string }>(`
+    const result = await client.query<{ table_name: string }>(
+      `
       select table_name
       from information_schema.tables
-      where table_schema = 'public' and table_name = 'admin_audit_logs'
-    `);
+      where table_schema = 'public'
+        and table_name = any($1::text[])
+      order by table_name
+    `,
+      [
+        [
+          "admin_audit_logs",
+          "billing_customers",
+          "billing_subscriptions",
+          "billing_webhook_events",
+        ],
+      ],
+    );
 
-    expect(result.rows).toEqual([{ table_name: "admin_audit_logs" }]);
+    expect(result.rows).toEqual([
+      { table_name: "admin_audit_logs" },
+      { table_name: "billing_customers" },
+      { table_name: "billing_subscriptions" },
+      { table_name: "billing_webhook_events" },
+    ]);
   });
 
   it("enables RLS and denies browser roles access to audit logs", async () => {
@@ -213,5 +238,60 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
       [[oldId, recentId]],
     );
     expect(remaining.rows).toEqual([{ id: recentId }]);
+  });
+
+  it("allows only the service role to persist billing projections", async () => {
+    const userId = randomUUID();
+    const otherUserId = randomUUID();
+    await client.query("insert into auth.users (id, email) values ($1, 'billing@example.test')", [
+      userId,
+    ]);
+    await client.query("insert into auth.users (id, email) values ($1, 'other@example.test')", [
+      otherUserId,
+    ]);
+
+    await client.query("set role service_role");
+    try {
+      await client.query(
+        `insert into public.billing_customers (user_id, provider_customer_id)
+         values ($1, 'cus_test')`,
+        [userId],
+      );
+      await client.query(
+        `insert into public.billing_subscriptions
+           (provider_subscription_id, user_id, provider_customer_id, status, price_id)
+         values ('sub_test', $1, 'cus_test', 'active', 'price_test')`,
+        [userId],
+      );
+      await client.query(
+        `insert into public.billing_webhook_events
+           (provider_event_id, event_type, status, provider_created_at)
+         values ('evt_test', 'customer.subscription.created', 'processed', now())`,
+      );
+      await client.query(
+        `insert into public.billing_customers (user_id, provider_customer_id)
+         values ($1, 'cus_other')`,
+        [otherUserId],
+      );
+      await expect(
+        client.query(
+          `insert into public.billing_subscriptions
+             (provider_subscription_id, user_id, provider_customer_id, status)
+           values ('sub_mismatched', $1, 'cus_other', 'active')`,
+          [userId],
+        ),
+      ).rejects.toThrow(/foreign key constraint/i);
+    } finally {
+      await client.query("reset role");
+    }
+
+    await client.query("set role authenticated");
+    try {
+      await expect(client.query("select * from public.billing_subscriptions")).rejects.toThrow(
+        /permission denied/i,
+      );
+    } finally {
+      await client.query("reset role");
+    }
   });
 });

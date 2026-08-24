@@ -127,6 +127,24 @@ describe("Supabase migration policy", () => {
     );
   });
 
+  it("keeps billing projections and webhook metadata service-role-only", () => {
+    const billingMigration = migrationFiles.find((migration) =>
+      migration.sql.includes("public.billing_customers"),
+    );
+
+    expect(billingMigration, "billing migration is missing").toBeDefined();
+    const sql = normalizeSql(billingMigration?.sql ?? "");
+
+    for (const table of ["billing_customers", "billing_subscriptions", "billing_webhook_events"]) {
+      expect(sql).toContain(
+        `revoke all on public.${table} from public, anon, authenticated, service_role`,
+      );
+      expect(sql).toContain(`grant select, insert, update on public.${table} to service_role`);
+    }
+
+    expect(sql).not.toMatch(/grant [^;]*(?:anon|authenticated)/);
+  });
+
   it("requires tenant-owned tables to declare both RLS and a policy", () => {
     expect(findMissingTenantPolicy(migrationFiles)).toEqual([]);
   });

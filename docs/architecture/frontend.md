@@ -6,11 +6,12 @@
 
 Recommended production and local browser requests are same-origin:
 
-| Browser path        | Express destination |
-| ------------------- | ------------------- |
-| `/auth/:path*`      | `/auth/:path*`      |
-| `/api/admin/:path*` | `/admin/:path*`     |
-| `/health`           | `/health`           |
+| Browser path          | Express destination |
+| --------------------- | ------------------- |
+| `/auth/:path*`        | `/auth/:path*`      |
+| `/api/admin/:path*`   | `/admin/:path*`     |
+| `/api/billing/:path*` | `/billing/:path*`   |
+| `/health`             | `/health`           |
 
 `FRONTEND_PROXY_TARGET` is read by Next.js while building rewrites. Leave `NEXT_PUBLIC_API_BASE_URL` empty in this mode. The `/api/admin/*` namespace avoids colliding with App Router pages under `/admin/*`.
 
@@ -26,8 +27,8 @@ Recommended production and local browser requests are same-origin:
 ## Routes
 
 - Public: `/`, `/register`, `/login`, `/forgot-password`, `/reset-password`, verification/error callbacks.
-- Protected: `/dashboard`, `/logout`.
-- Admin UI: `/admin`, `/admin/users`, `/admin/audit`.
+- Protected: `/dashboard`, `/logout`, `/billing`.
+- Admin UI: `/admin`, `/admin/users`, `/admin/audit`, `/admin/billing`.
 
 Password recovery uses a request-scoped implicit-flow client so the email returns an access token in the URL fragment without relying on process-local PKCE verifier state. The reset page parses the fragment and sends the required access token to Express without persisting it. The verification page only interprets the callback result and redirects the user to login; it does not exchange the fragment with Express.
 

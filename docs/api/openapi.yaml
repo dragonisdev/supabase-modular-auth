@@ -17,6 +17,7 @@ tags:
   - name: Health
   - name: Authentication
   - name: Administration
+  - name: Billing
 paths:
   /health:
     get:
@@ -577,6 +578,189 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /billing:
+    get:
+      operationId: getBillingOverview
+      summary: Get the current user's billing catalog and subscription projection
+      tags: [Billing]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      responses:
+        "200":
+          $ref: "#/components/responses/BillingOverviewSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/checkout:
+    post:
+      operationId: createBillingCheckout
+      summary: Create a Stripe-hosted subscription checkout session
+      tags: [Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingCheckoutRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/BillingRedirectSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/portal:
+    post:
+      operationId: createBillingPortal
+      summary: Create a Stripe-hosted customer portal session
+      tags: [Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      responses:
+        "201":
+          $ref: "#/components/responses/BillingRedirectSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/webhook:
+    post:
+      operationId: receiveStripeBillingWebhook
+      summary: Verify and process a Stripe webhook
+      description: Requires the exact raw JSON body and a valid Stripe-Signature header; CSRF does not apply.
+      tags: [Billing]
+      security:
+        - stripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          $ref: "#/components/responses/BillingWebhookSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/billing/webhooks/{eventId}/replay:
+    post:
+      operationId: replayBillingWebhook
+      summary: Replay one Stripe webhook event from the provider
+      tags: [Administration, Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      parameters:
+        - $ref: "#/components/parameters/StripeEventId"
+      responses:
+        "200":
+          $ref: "#/components/responses/BillingWebhookSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /admin/billing/reconcile:
+    post:
+      operationId: reconcileBillingUser
+      summary: Reconcile one user's subscriptions from Stripe
+      tags: [Administration, Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingReconcileRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/BillingReconcileSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
 components:
   securitySchemes:
     accessCookie:
@@ -597,6 +781,11 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
+    stripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: Stripe webhook signature verified against the configured endpoint secret and raw body.
 
   parameters:
     UserId:
@@ -607,6 +796,15 @@ components:
       schema:
         type: string
         minLength: 1
+    StripeEventId:
+      name: eventId
+      in: path
+      required: true
+      description: Stripe event identifier.
+      schema:
+        type: string
+        pattern: "^evt_[A-Za-z0-9]+$"
+        maxLength: 128
     Page:
       name: page
       in: query
@@ -762,6 +960,48 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/CurrentUserResponse"
+    BillingOverviewSuccess:
+      description: Billing configuration, catalog, and subscription projection returned.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BillingOverviewResponse"
+    BillingRedirectSuccess:
+      description: Stripe-hosted redirect session created.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BillingRedirectResponse"
+    BillingWebhookSuccess:
+      description: Stripe event accepted, replayed, or already processed.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BillingWebhookResponse"
+    BillingReconcileSuccess:
+      description: One user's Stripe subscriptions reconciled.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BillingReconcileResponse"
     AdminUsersSuccess:
       description: Paginated users returned.
       headers:
@@ -1103,6 +1343,137 @@ components:
               properties:
                 user:
                   $ref: "#/components/schemas/AuthUser"
+    BillingCheckoutRequest:
+      type: object
+      required: [priceId]
+      additionalProperties: false
+      properties:
+        priceId:
+          type: string
+          pattern: "^price_[A-Za-z0-9]+$"
+          maxLength: 128
+    BillingReconcileRequest:
+      type: object
+      required: [userId]
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          format: uuid
+    BillingPlan:
+      type: object
+      required: [currency, description, interval, intervalCount, name, priceId, unitAmount]
+      properties:
+        currency:
+          type: string
+        description:
+          type: [string, "null"]
+        interval:
+          type: string
+          enum: [day, week, month, year]
+        intervalCount:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+        priceId:
+          type: string
+        unitAmount:
+          type: integer
+          minimum: 0
+    BillingSubscription:
+      type: object
+      required:
+        - cancelAtPeriodEnd
+        - currentPeriodEnd
+        - currentPeriodStart
+        - priceId
+        - providerSubscriptionId
+        - status
+      properties:
+        cancelAtPeriodEnd:
+          type: boolean
+        currentPeriodEnd:
+          type: [string, "null"]
+          format: date-time
+        currentPeriodStart:
+          type: [string, "null"]
+          format: date-time
+        priceId:
+          type: [string, "null"]
+        providerSubscriptionId:
+          type: string
+        status:
+          type: string
+          enum:
+            [active, canceled, incomplete, incomplete_expired, past_due, paused, trialing, unpaid]
+    BillingOverviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [enabled, plans, subscriptions]
+              properties:
+                enabled:
+                  type: boolean
+                plans:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/BillingPlan"
+                subscriptions:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/BillingSubscription"
+    BillingRedirectResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+    BillingWebhookResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [eventId, eventType, processed]
+              properties:
+                eventId:
+                  type: string
+                eventType:
+                  type: string
+                processed:
+                  type: boolean
+    BillingReconcileResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [customerFound, subscriptionsSynchronized, userId]
+              properties:
+                customerFound:
+                  type: boolean
+                subscriptionsSynchronized:
+                  type: integer
+                  minimum: 0
+                userId:
+                  type: string
+                  format: uuid
     AdminRole:
       type: string
       enum: [admin, user]

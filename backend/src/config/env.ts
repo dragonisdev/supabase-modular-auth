@@ -7,6 +7,18 @@ if (existsSync(backendEnvFile)) {
   loadEnvFile(backendEnvFile);
 }
 
+const parseByteSize = (value: string): number => {
+  const match = /^(\d+)(b|kb|mb)$/i.exec(value);
+  if (!match) {
+    return Number.NaN;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  const multiplier = unit === "mb" ? 1024 * 1024 : unit === "kb" ? 1024 : 1;
+  return amount * multiplier;
+};
+
 const envSchema = z.object({
   // Supabase
   SUPABASE_URL: z.url(),
@@ -68,6 +80,43 @@ const envSchema = z.object({
     .optional()
     .default(5000),
 
+  // Billing (optional until explicitly enabled)
+  BILLING_ENABLED: z
+    .string()
+    .transform((value) => value === "true")
+    .optional()
+    .default(false),
+  STRIPE_SECRET_KEY: z.string().trim().startsWith("sk_").min(16).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().trim().startsWith("whsec_").min(16).optional(),
+  STRIPE_PRICE_IDS: z
+    .string()
+    .transform((value) =>
+      value
+        .split(",")
+        .map((priceId) => priceId.trim())
+        .filter(Boolean),
+    )
+    .pipe(
+      z
+        .array(z.string().regex(/^price_[A-Za-z0-9]+$/))
+        .max(20)
+        .refine((priceIds) => new Set(priceIds).size === priceIds.length, {
+          message: "Stripe Price IDs must be unique",
+        }),
+    )
+    .optional()
+    .default([]),
+  STRIPE_WEBHOOK_MAX_SIZE: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((value) => {
+      const bytes = parseByteSize(value);
+      return Number.isFinite(bytes) && bytes > 0 && bytes <= 1024 * 1024;
+    }, "Must be a positive byte, kb, or mb value no larger than 1mb")
+    .optional()
+    .default("256kb"),
+
   // Security
   TRUST_PROXY: z
     .string()
@@ -96,6 +145,18 @@ export type EnvConfig = z.infer<typeof envSchema>;
 let config: EnvConfig;
 try {
   config = envSchema.parse(process.env);
+
+  if (
+    config.BILLING_ENABLED &&
+    (!config.STRIPE_SECRET_KEY ||
+      !config.STRIPE_WEBHOOK_SECRET ||
+      config.STRIPE_PRICE_IDS.length === 0)
+  ) {
+    console.error(
+      "❌ BILLING_ENABLED requires STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, and STRIPE_PRICE_IDS",
+    );
+    process.exit(1);
+  }
 
   // Production security checks
   if (config.NODE_ENV === "production") {
