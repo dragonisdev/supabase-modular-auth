@@ -16,24 +16,18 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
   let client: Client;
   let createdRoles: string[] = [];
   let databaseCreated = false;
-  let serviceRoleInitiallyBypassedRls: boolean | undefined;
 
   beforeAll(async () => {
     adminClient = new Client({ connectionString: databaseUrl });
     await adminClient.connect();
     adminConnected = true;
 
-    const existingRoles = await adminClient.query<{
-      rolbypassrls: boolean;
-      rolname: string;
-    }>("select rolname, rolbypassrls from pg_roles where rolname = any($1::text[])", [
-      requiredDatabaseRoles,
-    ]);
+    const existingRoles = await adminClient.query<{ rolname: string }>(
+      "select rolname from pg_roles where rolname = any($1::text[])",
+      [requiredDatabaseRoles],
+    );
     const existingRoleNames = new Set(existingRoles.rows.map((role) => role.rolname));
     createdRoles = requiredDatabaseRoles.filter((role) => !existingRoleNames.has(role));
-    serviceRoleInitiallyBypassedRls = existingRoles.rows.find(
-      (role) => role.rolname === "service_role",
-    )?.rolbypassrls;
 
     await adminClient.query(`
       do $$
@@ -50,7 +44,6 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
       end
       $$;
     `);
-    await adminClient.query("alter role service_role bypassrls");
     await adminClient.query(`create database "${testDatabaseName}"`);
     databaseCreated = true;
 
@@ -79,10 +72,6 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
         [testDatabaseName],
       );
       await adminClient.query(`drop database if exists "${testDatabaseName}"`);
-    }
-
-    if (serviceRoleInitiallyBypassedRls === false) {
-      await adminClient.query("alter role service_role nobypassrls");
     }
 
     await createdRoles.toReversed().reduce(async (previousRole, role) => {

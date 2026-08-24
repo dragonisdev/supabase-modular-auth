@@ -16,7 +16,7 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 pnpm test:database
 ```
 
-The explicit opt-in is required because the database test needs `CREATEDB` and may temporarily create or adjust the `anon`, `authenticated`, and `service_role` cluster roles. It restores existing role state, removes roles it created, and drops its disposable database. Never point it at a shared or production cluster.
+The explicit opt-in is required because the database test needs `CREATEDB` and may temporarily create missing `anon`, `authenticated`, or `service_role` cluster roles. It never alters an existing role, removes roles it created, and drops its disposable database. Never point it at a shared or production cluster.
 
 With Docker running, the pinned Supabase CLI also validates the real project layout and local database image:
 

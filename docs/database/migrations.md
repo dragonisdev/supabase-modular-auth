@@ -31,7 +31,7 @@ The deterministic test suite also enforces layout, timestamp, RLS, and query-saf
 pnpm test:database
 ```
 
-Set both `TEST_DATABASE_URL` and `ALLOW_DATABASE_CLUSTER_MUTATIONS=true` to include behavior tests. The explicit opt-in is required because the runner creates and drops a random disposable database and may temporarily create or adjust Supabase-compatible cluster roles. It restores existing role state and removes roles it created, but still requires a local or otherwise dedicated cluster whose login has `CREATEDB`. Never point it at a shared or production cluster.
+Set both `TEST_DATABASE_URL` and `ALLOW_DATABASE_CLUSTER_MUTATIONS=true` to include behavior tests. The explicit opt-in is required because the runner creates and drops a random disposable database and may temporarily create missing Supabase-compatible cluster roles. It never alters an existing role and removes roles it created, but still requires a local or otherwise dedicated cluster whose login has `CREATEDB`. Never point it at a shared or production cluster.
 
 ## Migration rules
 
