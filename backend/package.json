@@ -14,11 +14,12 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --watch src --watch ../types/dist --ext ts,js,json --exec tsx src/index.ts",
+    "dev": "tsx watch --clear-screen=false src/index.ts",
     "start": "node dist/index.js",
     "type-check": "tsgo --noEmit"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "1.54.1",
     "@supabase-modular-auth/types": "workspace:*",
     "@supabase/supabase-js": "2.112.3",
     "cookie-parser": "^1.4.7",
@@ -30,7 +31,7 @@
     "redis": "6.2.0",
     "stripe": "22.4.0",
     "typescript": "catalog:",
-    "uuid": "^13.0.1",
+    "uuid": "13.0.2",
     "xss": "^1.0.15",
     "zod": "catalog:",
     "zxcvbn": "^4.4.2"
@@ -43,7 +44,6 @@
     "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
     "@typescript/native-preview": "latest",
-    "nodemon": "^3.1.14",
     "tsx": "4.23.13"
   },
   "packageManager": "pnpm@10.32.1"
