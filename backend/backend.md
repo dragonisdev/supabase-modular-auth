@@ -500,7 +500,7 @@ The `auth_token` cookie is set with:
 - Enable Google provider in Supabase Auth settings.
 - In Google Cloud OAuth client, set redirect URI to: `https://<your-project-ref>.supabase.co/auth/v1/callback`.
 - In Supabase Auth URL configuration, allow: `${BACKEND_URL}/auth/google/callback`.
-- Set `BACKEND_URL` in backend env for production.
+- Set `BACKEND_URL` to the public frontend origin when using the Next.js proxy, so OAuth cookies are written on the frontend host. Use the backend origin only in direct cross-origin mode.
 
 ## Frontend integration
 
@@ -614,11 +614,11 @@ backend/
 
 ### Optional - Server
 
-| Variable      | Description                                       | Default       |
-| ------------- | ------------------------------------------------- | ------------- |
-| `PORT`        | Server port                                       | `3000`        |
-| `NODE_ENV`    | Environment mode                                  | `development` |
-| `BACKEND_URL` | Backend URL (required for Google OAuth callbacks) | -             |
+| Variable      | Description                                                 | Default       |
+| ------------- | ----------------------------------------------------------- | ------------- |
+| `PORT`        | Server port                                                 | `3000`        |
+| `NODE_ENV`    | Environment mode                                            | `development` |
+| `BACKEND_URL` | Public OAuth callback origin; frontend origin in proxy mode | -             |
 
 ### Optional - Cookies
 

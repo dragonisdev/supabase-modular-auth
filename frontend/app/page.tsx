@@ -5,7 +5,12 @@ export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
-        <h1 className="mb-8 text-center text-3xl font-bold">Authentication Demo</h1>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold">SaaS Starter</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Secure authentication and administration for your next product.
+          </p>
+        </div>
 
         <div className="space-y-4">
           <Link
@@ -32,7 +37,7 @@ export default function Home() {
 
         <div className="mt-8 border-t border-gray-200 pt-6">
           <p className="text-center text-sm text-gray-600">
-            A simple authentication system built with Next.js and Supabase
+            Next.js frontend · Express API · Supabase Auth
           </p>
         </div>
       </div>

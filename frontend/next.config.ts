@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
-const proxyTarget = process.env.FRONTEND_PROXY_TARGET;
+import { fileURLToPath } from "node:url";
+
+const proxyTarget = process.env.FRONTEND_PROXY_TARGET?.replace(/\/$/, "");
+const workspaceRoot = fileURLToPath(new URL("../", import.meta.url));
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: workspaceRoot,
+  },
   async rewrites() {
     if (!proxyTarget) {
       return [];
@@ -12,6 +18,10 @@ const nextConfig: NextConfig = {
       {
         source: "/auth/:path*",
         destination: `${proxyTarget}/auth/:path*`,
+      },
+      {
+        source: "/api/admin/:path*",
+        destination: `${proxyTarget}/admin/:path*`,
       },
       {
         source: "/health",

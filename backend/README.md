@@ -43,7 +43,7 @@ FRONTEND_URL=http://localhost:3001
 # Optional - Server
 PORT=3000
 NODE_ENV=development
-# Backend URL (Required for Google OAuth callbacks)
+# Public OAuth callback origin. Use the frontend origin with the Next.js proxy.
 BACKEND_URL=http://localhost:3000
 
 # Optional - Cookies
