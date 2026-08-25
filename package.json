@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter types build && pnpm --filter backend build && pnpm --filter frontend build",
-    "dev": "pnpm -r --parallel dev",
+    "dev": "pnpm --filter @supabase-modular-auth/types build && pnpm -r --parallel dev",
     "format": "oxfmt",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
