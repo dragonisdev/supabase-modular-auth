@@ -40,11 +40,16 @@
 ## Supabase project configuration
 
 1. Go to Authentication → URL Configuration.
-2. Set Site URL to the Vercel URL.
-3. Add Redirect URLs with wildcards for backend (not mandatory), frontend, and frontend Google callback, e.g.:
-   - `https://supabase-repro-frontend-b5e8.vercel.app/*`
-   - `https://backend-production-2d74.up.railway.app/*`
-   - `https://supabase-repro-frontend-b5e8.vercel.app/auth/google/callback`
+2. Set Site URL to the production Vercel origin without a trailing slash, for example
+   `https://your-frontend.vercel.app`.
+3. Add the exact production Redirect URLs:
+   - `https://your-frontend.vercel.app/auth/google/callback`
+   - `https://your-frontend.vercel.app/auth/verify`
+   - `https://your-frontend.vercel.app/reset-password`
+4. In the recommended Next.js proxy mode, Supabase redirects through the frontend origin, so the
+   Railway backend URL does not need to be allowlisted.
+5. Prefer exact production URLs. If preview or local deployments require a wildcard, use `/**`, not
+   `/*`; Supabase's single `*` does not match nested paths.
 
 ## Google OAuth setup
 

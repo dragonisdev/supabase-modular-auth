@@ -1,7 +1,11 @@
-import { config as dotenvxConfig } from "@dotenvx/dotenvx";
+import { existsSync } from "node:fs";
+import { loadEnvFile } from "node:process";
 import { z } from "zod";
 
-dotenvxConfig();
+const backendEnvFile = new URL("../../.env", import.meta.url);
+if (existsSync(backendEnvFile)) {
+  loadEnvFile(backendEnvFile);
+}
 
 const envSchema = z.object({
   // Supabase

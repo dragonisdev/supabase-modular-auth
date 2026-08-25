@@ -5,10 +5,13 @@ import type { AdminUser } from "@supabase-modular-auth/types";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, getErrorMessage } from "@/lib/api";
+import { api, getErrorMessage, isSessionUnavailable } from "@/lib/api";
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
   const [accessChecked, setAccessChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -228,6 +231,10 @@ export default function AdminUsersPage() {
       const me = await api.getMe();
       if (!me.success || !me.data?.user) {
         setAccessChecked(true);
+        if (isSessionUnavailable(me)) {
+          setError(getErrorMessage(me));
+          return;
+        }
         router.push("/login");
         return;
       }
@@ -568,6 +575,24 @@ export default function AdminUsersPage() {
   }
 
   if (!isAdmin) {
+    if (error) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+          <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-md">
+            <h1 className="text-xl font-semibold text-black">Session check unavailable</h1>
+            <p className="mt-3 text-sm text-gray-600">{error}</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="mt-5 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+            >
+              Try again
+            </button>
+          </div>
+        </main>
+      );
+    }
+
     return null;
   }
 

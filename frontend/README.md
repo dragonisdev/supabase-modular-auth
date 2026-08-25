@@ -88,5 +88,7 @@ if (response.success && response.data?.url) {
 - All authentication is handled by the backend API
 - Always use `credentials: 'include'` in fetch requests
 - Auth state is determined by API responses only
+- Access-token refresh is handled transparently by the Express API through rotating HttpOnly cookies
+- Temporary authentication-service failures show a retry state instead of redirecting to login
 - Admin UI relies on `/auth/me` returning `is_admin` in the user payload
 - Same-origin mode proxies browser `/api/admin/*` calls to backend `/admin/*` routes

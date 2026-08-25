@@ -1,6 +1,6 @@
 # Supabase Auth Starter (Backend API + Next.js frontend)
 
-A modular Supabase authentication system: stateless backend API plus a minimal Next.js App Router frontend. Point the backend to your own Supabase project via environment variables, and you get a drop-in auth service (email/password, verification, reset, OAuth) backed by HttpOnly cookies. The frontend is intentionally thin—it only talks to the backend and never touches Supabase directly.
+A modular Supabase authentication system: stateless backend API plus a minimal Next.js App Router frontend. Point the backend to your own Supabase project via environment variables, and you get a drop-in auth service (email/password, verification, reset, OAuth) backed by rotating HttpOnly access and refresh cookies. The frontend is intentionally thin—it only talks to the backend and never touches Supabase directly.
 
 For deployment help, see [deployment.md](deployment.md).  
 For frontend details, see [frontend/frontend.md](frontend/frontend.md).  
@@ -20,7 +20,7 @@ For backend details, see [backend/backend.md](backend/backend.md).
 - Login for verified users only
 - Forgot/reset password flow
 - Google OAuth URL + callback (backend handles exchange and cookies)
-- HttpOnly cookie-based auth; frontend never sees tokens
+- Rotating HttpOnly access/refresh cookies; frontend never sees tokens
 - Rate limiting, security headers, CORS, non-enumerating errors
 - Type-safe validation and responses
 - Admin module (server-enforced): user listing/search, create/update/delete, ban/unban, bulk actions, and audit log feed
@@ -29,7 +29,7 @@ For backend details, see [backend/backend.md](backend/backend.md).
 
 1. Frontend calls backend API with `credentials: 'include'`.
 2. Backend validates inputs with Zod, talks to Supabase, and issues HttpOnly cookies.
-3. Protected data fetched via `/auth/me`; 401 responses drive redirects to login.
+3. Protected data is fetched via `/auth/me`; the backend verifies access tokens and transparently rotates expired sessions with the refresh cookie.
 4. OAuth handled entirely server-side; frontend just redirects to the provided URL.
 
 ## Getting started
@@ -70,7 +70,7 @@ Tune these to point the backend at your Supabase project. See [backend/backend.m
 - `PORT` (optional, default 3000)
 - `NODE_ENV` (optional, default development)
 - `BACKEND_URL` (public OAuth callback origin; use the frontend origin in same-origin proxy mode)
-- Cookie flags: `COOKIE_NAME`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS` (optional)
+- Cookie flags: `COOKIE_NAME`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS` (rolling browser-session lifetime; optional)
 - CSRF cookie flags: `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE` (optional)
 - Rate limiting: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS` (optional)
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE` (optional)
@@ -196,8 +196,8 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 ## API surface (high level)
 
 - `POST /auth/register` — register, returns "check your email to verify"
-- `POST /auth/login` — login, sets HttpOnly cookie
-- `POST /auth/logout` — clear session cookie
+- `POST /auth/login` — login, sets HttpOnly access and refresh cookies
+- `POST /auth/logout` — revoke when possible and clear both session cookies
 - `POST /auth/forgot-password` — always returns success to avoid enumeration
 - `POST /auth/reset-password` — uses token from Supabase email (in cookie)
 - `GET /auth/google/url` — obtain OAuth redirect URL
@@ -225,7 +225,7 @@ See [frontend/frontend.md](frontend/frontend.md) for flow details.
 
 ## Security posture
 
-- HttpOnly cookies; no tokens in localStorage/sessionStorage.
+- Rotating HttpOnly access/refresh cookies; no tokens in localStorage/sessionStorage.
 - Helmet security headers, CORS restricted via `FRONTEND_URL`, same-site cookies.
 - Non-enumerating auth errors and rate limiting on auth endpoints.
 - **Safari note:** third-party cookies may be blocked. Prefer same-origin proxying via `FRONTEND_PROXY_TARGET`.

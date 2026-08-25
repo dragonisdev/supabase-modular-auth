@@ -5,13 +5,18 @@ import type { AuthUser } from "@supabase-modular-auth/types";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { api } from "@/lib/api";
+import { api, getErrorMessage, isSessionUnavailable } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -20,13 +25,14 @@ export default function DashboardPage() {
 
         if (response.success && response.data) {
           setUser(response.data.user);
+        } else if (isSessionUnavailable(response)) {
+          setError(getErrorMessage(response));
         } else {
           // Not authenticated, redirect to login
           router.push("/login");
         }
       } catch {
-        // Error fetching user, redirect to login
-        router.push("/login");
+        setError("Unable to verify your session right now. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -64,6 +70,24 @@ export default function DashboardPage() {
   }
 
   if (!user) {
+    if (error) {
+      return (
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+          <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-md">
+            <h1 className="text-xl font-semibold text-black">Session check unavailable</h1>
+            <p className="mt-3 text-sm text-gray-600">{error}</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="mt-5 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            >
+              Try again
+            </button>
+          </div>
+        </main>
+      );
+    }
+
     return null; // Will redirect
   }
 

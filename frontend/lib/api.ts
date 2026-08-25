@@ -105,6 +105,45 @@ export function getErrorMessage(response: ApiResponse): string {
   }
 }
 
+export function isSessionUnavailable(response: ApiResponse): boolean {
+  return response.error === "SERVICE_UNAVAILABLE" || response.error === "CONNECTION_FAILED";
+}
+
+function getFallbackResponse<T = unknown>(status: number): ApiResponse<T> {
+  if (status === 401) {
+    return {
+      success: false,
+      message: "Authentication required.",
+      error: "UNAUTHORIZED",
+    };
+  }
+
+  if (status === 403) {
+    return {
+      success: false,
+      message: "You do not have permission to perform this action.",
+      error: "FORBIDDEN",
+    };
+  }
+
+  if (status === 429) {
+    return {
+      success: false,
+      message: "Too many requests. Please wait a moment and try again.",
+      error: "RATE_LIMITED",
+    };
+  }
+
+  return {
+    success: false,
+    message:
+      status >= 400
+        ? `Request failed with status ${status}.`
+        : "Unexpected server response format.",
+    error: "SERVICE_UNAVAILABLE",
+  };
+}
+
 async function fetchAPI<T = unknown>(
   endpoint: string,
   options?: RequestInit,
@@ -136,26 +175,18 @@ async function fetchAPI<T = unknown>(
     const contentType = response.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
-      const data = (await response.json()) as ApiResponse<T>;
-      // Backend contract should always provide this shape, keep a fallback for resilience
-      if (typeof data?.success === "boolean") {
-        return data;
+      try {
+        const data = (await response.json()) as ApiResponse<T>;
+        // Backend contract should always provide this shape, keep a fallback for resilience
+        if (typeof data?.success === "boolean") {
+          return data;
+        }
+      } catch {
+        // Preserve the HTTP status below when a proxy returns malformed JSON.
       }
     }
 
-    if (!response.ok) {
-      return {
-        success: false,
-        message: `Request failed with status ${response.status}.`,
-        error: "SERVICE_UNAVAILABLE",
-      };
-    }
-
-    return {
-      success: false,
-      message: "Unexpected server response format.",
-      error: "INTERNAL_ERROR",
-    };
+    return getFallbackResponse(response.status);
   } catch {
     // Network error or server unreachable
     return {

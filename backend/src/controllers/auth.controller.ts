@@ -1,15 +1,19 @@
 import type { Request, Response, NextFunction } from "express";
 
+import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+
 import config from "../config/env.js";
 import lockoutService from "../services/lockout.service.js";
+import sessionService from "../services/session.service.js";
 import SupabaseService from "../services/supabase.service.js";
 import { AuthError, EmailNotVerifiedError, ValidationError, ErrorCode } from "../utils/errors.js";
 import * as SecurityLogger from "../utils/logger.js";
 import {
-  setAuthCookie,
-  clearAuthCookie,
+  setAuthCookies,
+  clearAuthCookies,
   successResponse,
   getAuthTokenFromCookies,
+  getRefreshTokenFromCookies,
 } from "../utils/response.js";
 import {
   registerSchema,
@@ -125,7 +129,7 @@ export class AuthController {
         );
       }
 
-      const supabase = SupabaseService.getClient();
+      const supabase = SupabaseService.createSessionClient();
 
       // Register user with Supabase
       const { data, error } = await supabase.auth.signUp({
@@ -260,9 +264,9 @@ export class AuthController {
         );
       }
 
-      const supabase = SupabaseService.getClient();
+      const supabase = SupabaseService.createSessionClient();
 
-      // Attempt login
+      // Attempt login on an isolated auth client.
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -358,8 +362,8 @@ export class AuthController {
       lockoutService.clearAttempts(email, clientIp);
       SecurityLogger.logSuccessfulLogin(email, req);
 
-      // Set auth cookie with access token
-      setAuthCookie(res, data.session.access_token);
+      // Keep both bearer tokens server-managed in separate HttpOnly cookies.
+      setAuthCookies(res, data.session);
 
       successResponse(res, "Login successful", {
         user: {
@@ -378,26 +382,51 @@ export class AuthController {
    */
   async logout(req: Request, res: Response): Promise<void> {
     try {
-      const token = getAuthTokenFromCookies(req.cookies as Record<string, string>);
+      const cookies = (req.cookies || {}) as Record<string, string>;
+      const accessToken = getAuthTokenFromCookies(cookies);
+      const refreshToken = getRefreshTokenFromCookies(cookies);
+      let tokenToRevoke = accessToken;
+      let signOutError: unknown;
 
-      if (token) {
+      if (tokenToRevoke) {
         try {
-          // Sign out from Supabase using admin client
           const adminClient = SupabaseService.getAdminClient();
-          await adminClient.auth.admin.signOut(token);
+          const { error } = await adminClient.auth.admin.signOut(tokenToRevoke);
+          signOutError = error;
         } catch (supabaseError) {
-          // Log but don't fail - cookie will still be cleared
-          SecurityLogger.logError(supabaseError as Error, req, { operation: "logout" });
+          signOutError = supabaseError;
         }
       }
 
-      // Always clear cookie
-      clearAuthCookie(res);
+      // An expired access token cannot revoke the session. Rotate once and retry
+      // with the newly issued access token when a refresh cookie is available.
+      if ((!tokenToRevoke || signOutError) && refreshToken) {
+        const resolution = await sessionService.refresh(refreshToken);
+        tokenToRevoke = resolution.refreshedSession?.access_token;
+
+        if (tokenToRevoke) {
+          try {
+            const adminClient = SupabaseService.getAdminClient();
+            const { error } = await adminClient.auth.admin.signOut(tokenToRevoke);
+            signOutError = error;
+          } catch (supabaseError) {
+            signOutError = supabaseError;
+          }
+        } else if ("error" in resolution && resolution.error) {
+          signOutError = resolution.error;
+        }
+      }
+
+      if (signOutError) {
+        SecurityLogger.logError(signOutError as Error, req, { operation: "logout" });
+      }
+
+      // Local logout must always succeed even when remote revocation is unavailable.
+      clearAuthCookies(res);
 
       successResponse(res, "Logout successful");
     } catch (_error) {
-      // Even if everything fails, try to clear the cookie
-      clearAuthCookie(res);
+      clearAuthCookies(res);
       successResponse(res, "Logout successful");
     }
   }
@@ -504,8 +533,8 @@ export class AuthController {
         lockoutService.fullReset(user.email);
       }
 
-      // Clear the auth cookie
-      clearAuthCookie(res);
+      // Password changes invalidate the browser-managed session.
+      clearAuthCookies(res);
 
       SecurityLogger.logSecurityEvent("PASSWORD_RESET_SUCCESS", req, { userId: user.id });
 
@@ -594,8 +623,7 @@ export class AuthController {
         return;
       }
 
-      // Set auth cookie
-      setAuthCookie(res, data.session.access_token);
+      setAuthCookies(res, data.session);
 
       SecurityLogger.logSuccessfulLogin(data.user?.email || "oauth-user", req);
 
@@ -611,62 +639,31 @@ export class AuthController {
    * GET /auth/me
    * Get current user info (protected route)
    */
-  async getCurrentUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getCurrentUser(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
-      const token = getAuthTokenFromCookies(req.cookies as Record<string, string>);
-
-      if (!token) {
+      if (!req.user) {
         throw new AuthError("Not authenticated. Please login.");
       }
 
-      const supabase = SupabaseService.getClient();
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser(token);
-
-      if (error) {
-        SecurityLogger.logError(error as Error, req, { operation: "get-user" });
-        clearAuthCookie(res);
-
-        const errorMessage = error.message?.toLowerCase() || "";
-        if (errorMessage.includes("expired") || errorMessage.includes("invalid")) {
-          throw new AuthError("Your session has expired. Please login again.");
-        }
-
-        throw new AuthError("Invalid session. Please login again.");
-      }
-
-      if (!user) {
-        clearAuthCookie(res);
-        throw new AuthError("User not found. Please login again.");
-      }
-
-      const banState = this.getBanState(user.app_metadata);
-      if (banState.banned) {
-        clearAuthCookie(res);
-        throw new AuthError(this.buildBanMessage(user.app_metadata), ErrorCode.UNAUTHORIZED);
-      }
-
-      const role = typeof user.app_metadata?.role === "string" ? user.app_metadata.role : "user";
-      const isAdmin =
-        typeof user.app_metadata?.is_admin === "boolean"
-          ? user.app_metadata.is_admin
-          : role === "admin";
+      const role = req.user.role || "user";
+      const isAdmin = req.user.is_admin ?? role === "admin";
 
       successResponse(res, "User retrieved", {
         user: {
-          id: user.id,
-          email: user.email,
-          email_verified: !!user.email_confirmed_at,
-          created_at: user.created_at,
-          username: user.user_metadata?.username || null,
+          id: req.user.id,
+          email: req.user.email,
+          email_verified: !!req.user.email_confirmed_at,
+          created_at: req.user.created_at,
+          username: req.user.username || null,
           role,
           is_admin: isAdmin,
-          banned: banState.banned,
-          ban_reason:
-            typeof user.app_metadata?.ban_reason === "string" ? user.app_metadata.ban_reason : null,
-          ban_expires_at: banState.banExpiresAt,
+          banned: req.user.banned ?? false,
+          ban_reason: req.user.ban_reason || null,
+          ban_expires_at: req.user.ban_expires_at || null,
         },
       });
     } catch (error) {

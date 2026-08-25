@@ -1,4 +1,5 @@
-import { Response } from "express";
+import type { Session } from "@supabase/supabase-js";
+import type { CookieOptions, Response } from "express";
 
 import config from "../config/env.js";
 
@@ -16,38 +17,32 @@ export interface SuccessResponse {
  * - Cookie must not have a Domain attribute
  * - Cookie path must be "/"
  */
-const getCookieName = (): string => {
+const REFRESH_COOKIE_SUFFIX = "_refresh";
+
+const getCookieName = (baseName: string): string => {
   // Use __Host- prefix only in production with secure cookies, which ensures it is only sent to the exact host
   if (config.NODE_ENV === "production" && config.COOKIE_SECURE) {
-    return `__Host-${config.COOKIE_NAME}`;
+    return `__Host-${baseName}`;
   }
-  return config.COOKIE_NAME;
+  return baseName;
 };
+
+const getAccessCookieName = (): string => getCookieName(config.COOKIE_NAME);
+const getRefreshCookieName = (): string =>
+  getCookieName(`${config.COOKIE_NAME}${REFRESH_COOKIE_SUFFIX}`);
+
+const getSessionMaxAge = (): number => config.COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
 /**
  * Cookie options builder
  * Constructs secure cookie options based on environment
  */
-const getCookieOptions = (): {
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: "strict" | "lax" | "none";
-  domain?: string;
-  maxAge: number;
-  path: string;
-} => {
-  const options: {
-    httpOnly: boolean;
-    secure: boolean;
-    sameSite: "strict" | "lax" | "none";
-    domain?: string;
-    maxAge: number;
-    path: string;
-  } = {
+const getCookieOptions = (maxAge: number): CookieOptions => {
+  const options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access (XSS protection)
     secure: config.COOKIE_SECURE, // HTTPS only
-    sameSite: config.COOKIE_SAME_SITE, // CSRF protection
-    maxAge: config.COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000, // Convert days to ms
+    sameSite: config.COOKIE_SAME_SITE, // Cookie policy and CSRF defense in depth
+    maxAge,
     path: "/",
   };
 
@@ -61,44 +56,58 @@ const getCookieOptions = (): {
 };
 
 /**
- * Set authentication cookie
- * Uses HttpOnly, Secure (in production), and SameSite attributes
+ * Set access and refresh cookies from a Supabase session.
+ * The access cookie follows the JWT lifetime; the rotating refresh cookie
+ * follows the configured browser-session lifetime.
  */
-export const setAuthCookie = (res: Response, token: string): void => {
-  const cookieName = getCookieName();
-  const options = getCookieOptions();
+export const setAuthCookies = (
+  res: Response,
+  session: Pick<Session, "access_token" | "refresh_token" | "expires_in">,
+): void => {
+  const sessionMaxAge = getSessionMaxAge();
+  const accessMaxAge =
+    Number.isFinite(session.expires_in) && session.expires_in > 0
+      ? Math.min(session.expires_in * 1000, sessionMaxAge)
+      : sessionMaxAge;
 
-  res.cookie(cookieName, token, options);
+  res.cookie(getAccessCookieName(), session.access_token, getCookieOptions(accessMaxAge));
+  res.cookie(getRefreshCookieName(), session.refresh_token, getCookieOptions(sessionMaxAge));
 };
 
 /**
- * Clear authentication cookie
- * Must use same options as when setting to properly clear
+ * Clear access and refresh cookies.
+ * Must use the same security options as when setting them.
  */
-export const clearAuthCookie = (res: Response): void => {
-  const cookieName = getCookieName();
-  const options = getCookieOptions();
+export const clearAuthCookies = (res: Response): void => {
+  const options = getCookieOptions(getSessionMaxAge());
 
   // Remove maxAge for clearing
   const { maxAge: _maxAge, ...clearOptions } = options;
 
-  res.clearCookie(cookieName, clearOptions);
+  const baseNames = [config.COOKIE_NAME, `${config.COOKIE_NAME}${REFRESH_COOKIE_SUFFIX}`];
+  for (const baseName of baseNames) {
+    const cookieName = getCookieName(baseName);
+    res.clearCookie(cookieName, clearOptions);
 
-  // Also clear non-prefixed cookie in case of upgrade from old version
-  if (cookieName !== config.COOKIE_NAME) {
-    res.clearCookie(config.COOKIE_NAME, clearOptions);
+    // Also clear non-prefixed cookies in case of an upgrade from an older version.
+    if (cookieName !== baseName) {
+      res.clearCookie(baseName, clearOptions);
+    }
   }
 };
 
 /**
- * Get the auth token from request cookies
- * Handles both prefixed and non-prefixed cookie names
+ * Get the access token from the canonical cookie for the active environment.
  */
 export const getAuthTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
-  const prefixedName = getCookieName();
+  return cookies[getAccessCookieName()];
+};
 
-  // Try prefixed name first, then fall back to non-prefixed
-  return cookies[prefixedName] || cookies[config.COOKIE_NAME];
+/**
+ * Get the rotating refresh token from the canonical cookie for the active environment.
+ */
+export const getRefreshTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
+  return cookies[getRefreshCookieName()];
 };
 
 /**

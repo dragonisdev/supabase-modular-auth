@@ -13,8 +13,8 @@ The frontend is intentionally thin: it **never calls Supabase** directly. All au
 ## High-level architecture & flow
 
 1. **Frontend** makes `fetch` calls to backend with `credentials: "include"`.
-2. **Backend** validates input (Zod), calls Supabase Auth, and issues **HttpOnly cookies**.
-3. **Protected calls** use `/auth/me` to verify the session on every request.
+2. **Backend** validates input (Zod), calls Supabase Auth, and issues separate **HttpOnly access and refresh cookies**.
+3. **Protected calls** verify the access token with Supabase on every request and transparently rotate the session when only a valid refresh token remains.
 4. **OAuth** is fully server-side; frontend only redirects to the URL provided by the backend.
 
 Key backend chain: **Middleware → Routes → Controllers → Services → Supabase**.
@@ -66,9 +66,12 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 
 ### Cookies & session
 
-- Auth cookie is **HttpOnly** and **SameSite** per env.
-- In production with `COOKIE_SECURE=true`, cookie name is prefixed with **`__Host-`**.
+- Access and refresh cookies are **HttpOnly** and **SameSite** per env. The refresh cookie name is derived as `${COOKIE_NAME}_refresh`.
+- The access cookie follows the Supabase JWT lifetime. The refresh cookie uses the rolling `COOKIE_MAX_AGE_DAYS` browser lifetime (default seven days); Supabase project session policies may shorten it.
+- In production with `COOKIE_SECURE=true`, both cookie names are prefixed with **`__Host-`**.
 - `COOKIE_DOMAIN` **must be empty** when using `__Host-` prefix.
+- Refreshes must use a request-scoped Supabase client. Never refresh through the process-wide anonymous client.
+- Terminal refresh failures clear both cookies. Retryable/network/429/5xx failures return a service error without destroying the session.
 
 ### Rate limiting & lockout
 
