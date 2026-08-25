@@ -44,7 +44,10 @@ http://localhost:3000
 
 ### Authentication
 
-All protected endpoints require a valid Supabase session. The access token is stored in the HttpOnly `auth_token` cookie and the rotating refresh token in `auth_token_refresh` (both names receive the `__Host-` prefix in secure production mode).
+All protected endpoints require a valid Supabase session. The access token is stored in the
+HttpOnly cookie configured by `COOKIE_NAME` (default: `auth_token`), and the rotating refresh token
+uses the derived `${COOKIE_NAME}_refresh` name (default: `auth_token_refresh`). Both names receive
+the `__Host-` prefix in secure production mode.
 
 ### Admin authorization
 
@@ -179,7 +182,8 @@ Login with email and password.
 }
 ```
 
-Sets HttpOnly cookies: `auth_token` and `auth_token_refresh`
+Sets separate HttpOnly access and refresh cookies using `COOKIE_NAME` (default: `auth_token`) and
+the derived `${COOKIE_NAME}_refresh` name (default: `auth_token_refresh`).
 
 **Error responses**
 
@@ -267,7 +271,7 @@ Reset password using the token from email.
 
 **Headers**
 
-- Cookie: `auth_token` (from reset link)
+- Cookie configured by `COOKIE_NAME` (default: `auth_token`, from the reset link)
 
 **Password requirements**
 
@@ -358,7 +362,8 @@ Get information about the currently authenticated user.
 
 **Headers**
 
-- Cookies: `auth_token` and `auth_token_refresh` (automatically sent)
+- Access and refresh cookies configured by `COOKIE_NAME` and the derived `${COOKIE_NAME}_refresh`
+  name (defaults: `auth_token` and `auth_token_refresh`; automatically sent)
 
 **Success response (200)**
 
@@ -422,15 +427,19 @@ The API includes the following security headers via Helmet:
 
 ### Cookie configuration
 
-The `auth_token` access cookie and derived `auth_token_refresh` cookie are set with:
+The access cookie configured by `COOKIE_NAME` and the derived `${COOKIE_NAME}_refresh` refresh
+cookie (defaults: `auth_token` and `auth_token_refresh`) are set with:
 
 - `httpOnly: true` - Not accessible via JavaScript
 - `secure: true` - HTTPS only (in production)
-- `sameSite: 'lax'` - CSRF protection
+- `sameSite: COOKIE_SAME_SITE` (`lax` by default) - Cookie policy and CSRF defense in depth
 - Access `maxAge`: remaining Supabase JWT lifetime
 - Refresh `maxAge`: rolling `COOKIE_MAX_AGE_DAYS` (seven days by default)
 - `domain`: Configured via environment
 - `path: /`
+
+SameSite complements but does not replace the primary CSRF control: the non-HttpOnly `csrf_token`
+cookie must match the `X-CSRF-Token` header on protected non-GET requests.
 
 **Safari note:** If frontend and backend are on different sites, set `COOKIE_SAME_SITE=none` and `CSRF_COOKIE_SAME_SITE=none` with `COOKIE_SECURE=true` (HTTPS). Safari may still block third‑party cookies; prefer same-site proxying.
 
