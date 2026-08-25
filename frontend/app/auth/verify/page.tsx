@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 
 type VerifyStatus = "loading" | "success" | "error";
 
@@ -74,9 +74,16 @@ function parseVerificationHash(): VerifyResult {
 
 export default function VerifyEmailPage() {
   const router = useRouter();
+  const [{ status, errorMessage }, setVerificationResult] = useState<VerifyResult>({
+    status: "loading",
+    errorMessage: "",
+  });
 
-  // Parse hash on mount
-  const { status, errorMessage } = useMemo(() => parseVerificationHash(), []);
+  // URL fragments only exist in the browser. Parse them after hydration so the
+  // server and the first client render both show the loading state.
+  useEffect(() => {
+    setVerificationResult(parseVerificationHash());
+  }, []);
 
   // Handle redirect for success case
   useEffect(() => {
