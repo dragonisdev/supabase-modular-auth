@@ -20,6 +20,36 @@ Supabase Auth is the identity provider. Express owns the application-facing sess
 5. New cookies replace the old session. The access cookie follows the JWT lifetime; the refresh cookie has a seven-day rolling browser lifetime by default.
 6. Retryable Supabase failures return 503 and preserve the existing cookies. Terminal failures return 401 and clear them.
 
+### Session resolution flow
+
+```mermaid
+flowchart TD
+  request[Protected request] --> cookies[Read canonical HttpOnly access and refresh cookies]
+  cookies --> access{Access token candidate?}
+
+  access -- Yes --> verifyAccess[Verify access token with Supabase auth.getUser]
+  verifyAccess --> accessResult{Verification result}
+  accessResult -- Valid --> authenticated[Authenticated: attach user to request]
+  accessResult -- Temporary failure --> unavailable[Unavailable: return 503 and preserve cookies]
+  accessResult -- Invalid or expired --> refresh{Refresh token candidate?}
+
+  access -- No --> refresh
+  refresh -- No --> invalid[Invalid: return 401 and clear cookies]
+  refresh -- Yes --> rotate[Exchange refresh token on a request-scoped Supabase client]
+  rotate --> refreshResult{Refresh result}
+  refreshResult -- Temporary failure --> unavailable
+  refreshResult -- Invalid --> invalid
+  refreshResult -- New session --> verifyRotated[Verify the rotated access token]
+
+  verifyRotated --> rotatedResult{Verification result}
+  rotatedResult -- Valid --> rotated[Authenticated: set rotated cookies and attach user]
+  rotatedResult -- Temporary failure --> rotatedUnavailable[Unavailable: keep rotated cookies and return 503]
+  rotatedResult -- Invalid --> invalid
+```
+
+The initial token-length checks are only input sanity checks. Supabase verification remains the
+source of truth for whether a token identifies a valid user.
+
 ## OAuth
 
 The frontend asks Express for the provider URL and redirects the browser. Supabase handles provider state. Express stores OAuth PKCE material server-side, exchanges the callback, writes cookies, and redirects back to the frontend.
