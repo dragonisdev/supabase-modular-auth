@@ -13,6 +13,8 @@ import React, {
 import { PasswordInput } from "@/components";
 import { api, getErrorMessage } from "@/lib/api";
 
+type RecoveryStatus = "checking" | "ready" | "error";
+
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,28 +22,32 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus>("checking");
 
   const passwordsMatch = password === confirmPassword || confirmPassword === "";
   const showMismatchError = !passwordsMatch && confirmPassword.length > 0;
 
-  // Extract token from URL hash when component mounts
+  // The backend verifies Supabase's token hash before redirecting here. React
+  // receives only a non-sensitive status marker; the recovery token stays in
+  // a short-lived HttpOnly cookie.
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      // Supabase sends token in format: #access_token=...&type=recovery
-      const params = new URLSearchParams(hash.substring(1));
-      const accessToken = params.get("access_token");
-      const tokenType = params.get("type");
+    const params = new URLSearchParams(window.location.search);
+    const recovery = params.get("recovery");
+    const recoveryError = params.get("error");
 
-      if (accessToken && tokenType === "recovery") {
-        setToken(accessToken);
-      } else {
-        setError("Invalid or missing reset token. Please request a new password reset.");
-      }
-    } else {
-      setError("No reset token found. Please use the link from your email.");
+    if (recovery === "verified") {
+      setRecoveryStatus("ready");
+      return;
     }
+
+    if (recoveryError === "service_unavailable") {
+      setError(
+        "The authentication service is temporarily unavailable. Please open the email link again.",
+      );
+    } else {
+      setError("Your reset link is invalid or expired. Please request a new password reset email.");
+    }
+    setRecoveryStatus("error");
   }, []);
 
   const handleSubmit = useCallback(
@@ -51,17 +57,9 @@ export default function ResetPasswordPage() {
       setError("");
       setFieldErrors({});
 
-      // Check if token is available
-      if (!token) {
-        setError("Reset token is missing. Please use the link from your email.");
-        setLoading(false);
-        return;
-      }
-
       const validation = resetPasswordFormSchema.safeParse({
         password,
         confirmPassword,
-        token,
       });
 
       if (!validation.success) {
@@ -78,12 +76,15 @@ export default function ResetPasswordPage() {
       }
 
       try {
-        const response = await api.resetPassword(password, token);
+        const response = await api.resetPassword(password);
 
         if (response.success) {
           setSuccess(true);
         } else {
           setError(getErrorMessage(response));
+          if (response.error === "INVALID_TOKEN" || response.error === "TOKEN_EXPIRED") {
+            setRecoveryStatus("error");
+          }
         }
       } catch {
         setError("An unexpected error occurred. Please try again.");
@@ -91,7 +92,7 @@ export default function ResetPasswordPage() {
         setLoading(false);
       }
     },
-    [confirmPassword, password, token],
+    [confirmPassword, password],
   );
 
   const handlePasswordChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +102,17 @@ export default function ResetPasswordPage() {
   const handleConfirmPasswordChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setConfirmPassword(e.target.value);
   }, []);
+
+  if (recoveryStatus === "checking") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Checking your reset link...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -118,6 +130,23 @@ export default function ResetPasswordPage() {
               Go to Login
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (recoveryStatus === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-md rounded-lg bg-white p-8 text-center shadow-md">
+          <h1 className="mb-4 text-2xl font-bold text-red-600">Reset Link Unavailable</h1>
+          <p className="mb-6 text-gray-600">{error}</p>
+          <Link
+            href="/forgot-password"
+            className="inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            Request a New Link
+          </Link>
         </div>
       </div>
     );
@@ -163,7 +192,7 @@ export default function ResetPasswordPage() {
 
           <button
             type="submit"
-            disabled={loading || !token}
+            disabled={loading}
             className="w-full rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
             {loading ? "Resetting..." : "Reset Password"}

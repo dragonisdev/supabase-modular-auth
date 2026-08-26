@@ -18,6 +18,8 @@ export interface SuccessResponse {
  * - Cookie path must be "/"
  */
 const REFRESH_COOKIE_SUFFIX = "_refresh";
+const PASSWORD_RECOVERY_COOKIE_SUFFIX = "_password_recovery";
+const PASSWORD_RECOVERY_MAX_AGE_MS = 15 * 60 * 1000;
 
 const getCookieName = (baseName: string): string => {
   // Use __Host- prefix only in production with secure cookies, which ensures it is only sent to the exact host
@@ -30,6 +32,8 @@ const getCookieName = (baseName: string): string => {
 const getAccessCookieName = (): string => getCookieName(config.COOKIE_NAME);
 const getRefreshCookieName = (): string =>
   getCookieName(`${config.COOKIE_NAME}${REFRESH_COOKIE_SUFFIX}`);
+const getPasswordRecoveryCookieName = (): string =>
+  getCookieName(`${config.COOKIE_NAME}${PASSWORD_RECOVERY_COOKIE_SUFFIX}`);
 
 const getSessionMaxAge = (): number => config.COOKIE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
@@ -97,6 +101,39 @@ export const clearAuthCookies = (res: Response): void => {
 };
 
 /**
+ * Store the short-lived password-recovery access token outside JavaScript.
+ * No refresh token is retained: recovery must expire rather than silently rotate.
+ */
+export const setPasswordRecoveryCookie = (
+  res: Response,
+  session: Pick<Session, "access_token" | "expires_in">,
+): void => {
+  const tokenMaxAge =
+    Number.isFinite(session.expires_in) && session.expires_in > 0
+      ? session.expires_in * 1000
+      : PASSWORD_RECOVERY_MAX_AGE_MS;
+
+  res.cookie(
+    getPasswordRecoveryCookieName(),
+    session.access_token,
+    getCookieOptions(Math.min(tokenMaxAge, PASSWORD_RECOVERY_MAX_AGE_MS)),
+  );
+};
+
+/**
+ * Clear the password-recovery capability using the same cookie policy used to set it.
+ */
+export const clearPasswordRecoveryCookie = (res: Response): void => {
+  const { maxAge: _maxAge, ...clearOptions } = getCookieOptions(PASSWORD_RECOVERY_MAX_AGE_MS);
+  const cookieName = getPasswordRecoveryCookieName();
+
+  res.clearCookie(cookieName, clearOptions);
+  if (cookieName !== `${config.COOKIE_NAME}${PASSWORD_RECOVERY_COOKIE_SUFFIX}`) {
+    res.clearCookie(`${config.COOKIE_NAME}${PASSWORD_RECOVERY_COOKIE_SUFFIX}`, clearOptions);
+  }
+};
+
+/**
  * Get the access token from the canonical cookie for the active environment.
  */
 export const getAuthTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
@@ -108,6 +145,15 @@ export const getAuthTokenFromCookies = (cookies: Record<string, string>): string
  */
 export const getRefreshTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
   return cookies[getRefreshCookieName()];
+};
+
+/**
+ * Get the short-lived password-recovery token from its HttpOnly cookie.
+ */
+export const getPasswordRecoveryTokenFromCookies = (
+  cookies: Record<string, string>,
+): string | undefined => {
+  return cookies[getPasswordRecoveryCookieName()];
 };
 
 /**

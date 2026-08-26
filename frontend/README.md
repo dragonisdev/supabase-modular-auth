@@ -51,7 +51,7 @@ The app will be available at `http://localhost:3001`
 - `/register` - User registration
 - `/login` - User login (includes Google OAuth button)
 - `/forgot-password` - Request password reset
-- `/reset-password` - Reset password with token
+- `/reset-password` - Reset password with a backend-verified HttpOnly recovery cookie
 - `/dashboard` - Protected user dashboard
 - `/admin` - Admin panel home (admin only)
 - `/admin/users` - User management (admin only)

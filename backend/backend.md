@@ -254,13 +254,22 @@ Request a password reset email.
 
 - Always returns success to prevent email enumeration
 - Supabase sends reset email if account exists
-- Reset link redirects to frontend
+- `redirectTo` targets the frontend-proxied `/auth/recovery/confirm` endpoint
+
+#### Confirm password recovery
+
+**GET /auth/recovery/confirm**
+
+Verifies the one-time `token_hash` from the Supabase recovery email. On success, the backend stores
+the recovery access token in a separate HttpOnly cookie for at most 15 minutes and redirects to
+`/reset-password?recovery=verified`. Invalid or expired links redirect to the reset page with a safe
+error marker. Tokens are never placed in a frontend-readable URL or response body.
 
 #### Reset password
 
 **POST /auth/reset-password**
 
-Reset password using the token from email.
+Reset password using the short-lived recovery cookie established by `/auth/recovery/confirm`.
 
 **Request body**
 
@@ -272,7 +281,8 @@ Reset password using the token from email.
 
 **Headers**
 
-- Cookie configured by `COOKIE_NAME` (default: `auth_token`, from the reset link)
+- `${COOKIE_NAME}_password_recovery` HttpOnly cookie (set by the confirmation endpoint)
+- Matching CSRF cookie and `X-CSRF-Token` header
 
 **Password requirements**
 
@@ -293,14 +303,14 @@ Reset password using the token from email.
 **Error responses**
 
 - `400 INVALID_INPUT`: Invalid password format
-- `401 AUTH_FAILED`: Invalid or expired reset token
+- `401 INVALID_TOKEN`: Missing, invalid, or expired recovery session
 - `429 RATE_LIMIT_EXCEEDED`: Too many attempts
 
 **Notes**
 
-- Requires valid reset token from email
-- Token is consumed after successful reset
-- Auth cookie is cleared after reset
+- Requires a recovery link previously verified by Express
+- The one-time email hash is consumed during confirmation
+- Recovery and regular auth cookies are cleared after reset
 
 #### Get Google OAuth URL
 
@@ -428,14 +438,15 @@ The API includes the following security headers via Helmet:
 
 ### Cookie configuration
 
-The access cookie configured by `COOKIE_NAME` and the derived `${COOKIE_NAME}_refresh` refresh
-cookie (defaults: `auth_token` and `auth_token_refresh`) are set with:
+The access cookie configured by `COOKIE_NAME`, the derived `${COOKIE_NAME}_refresh` refresh cookie,
+and the short-lived `${COOKIE_NAME}_password_recovery` cookie are set with:
 
 - `httpOnly: true` - Not accessible via JavaScript
 - `secure: true` - HTTPS only (in production)
 - `sameSite: COOKIE_SAME_SITE` (`lax` by default) - Cookie policy and CSRF defense in depth
 - Access `maxAge`: remaining Supabase JWT lifetime
 - Refresh `maxAge`: rolling `COOKIE_MAX_AGE_DAYS` (seven days by default)
+- Password-recovery `maxAge`: remaining token lifetime, capped at 15 minutes; never refreshed
 - `domain`: Configured via `COOKIE_DOMAIN` outside secure production; omitted for host-only
   `__Host-` cookies
 - `path: /`
@@ -494,11 +505,12 @@ cookie must match the `X-CSRF-Token` header on protected non-GET requests.
 ### Password reset flow
 
 1. User requests reset via `/auth/forgot-password`
-2. Supabase sends reset email with token
-3. User clicks link (redirects to frontend with token)
-4. Frontend sends new password to `/auth/reset-password`
-5. Backend validates token and updates password
-6. User must login with new password
+2. Supabase sends a recovery email containing a one-time token hash
+3. The link calls `/auth/recovery/confirm` through the frontend proxy
+4. Express verifies the hash and sets a short-lived HttpOnly recovery cookie
+5. Frontend sends only the new password to `/auth/reset-password`
+6. Backend validates the recovery cookie, updates the password, and clears all local auth cookies
+7. User must login with the new password
 
 ### Google OAuth flow
 

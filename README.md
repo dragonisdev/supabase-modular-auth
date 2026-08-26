@@ -199,7 +199,8 @@ Same as Recipe A. Netlify deploys `frontend/` and Railway deploys `backend/`.
 - `POST /auth/login` — login, sets HttpOnly access and refresh cookies
 - `POST /auth/logout` — revoke when possible and clear both session cookies
 - `POST /auth/forgot-password` — always returns success to avoid enumeration
-- `POST /auth/reset-password` — uses token from Supabase email (in cookie)
+- `GET /auth/recovery/confirm` — verifies the recovery email token hash and sets a short-lived HttpOnly cookie
+- `POST /auth/reset-password` — accepts only the new password and validates the recovery cookie
 - `GET /auth/google/url` — obtain OAuth redirect URL
 - `GET /auth/me` — current user info; 401 if not authenticated
 - `GET /admin/users` — list users (admin only)

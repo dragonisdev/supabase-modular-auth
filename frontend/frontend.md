@@ -46,7 +46,9 @@
 
 - `/reset-password`
   - Form: new password + confirmation.
-  - POST `/auth/reset-password` (token is in cookie from email link).
+  - Supabase's email first calls backend-owned `GET /auth/recovery/confirm` with a one-time token hash.
+  - Express verifies the hash and stores a maximum-15-minute recovery credential in an HttpOnly cookie.
+  - POST `/auth/reset-password` sends only the new password; React never handles the recovery token.
   - On success: prompt to log in.
 
 - `/dashboard`

@@ -26,6 +26,8 @@ export const usernameSchema = z
   .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username must be at least 3 characters")
   .regex(USERNAME_PATTERN, "Username can only contain letters, numbers, hyphens, and underscores");
 
+// Retained as a public utility for consumers that validate JWT-shaped values.
+// Password recovery no longer accepts this token from the browser.
 export const resetTokenSchema = z
   .string()
   .min(10, "Invalid reset token")
@@ -53,7 +55,6 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   password: strongPasswordSchema,
-  token: resetTokenSchema,
 });
 
 // Client-Side Schemas
@@ -73,7 +74,6 @@ export const resetPasswordFormSchema = z
   .object({
     password: strongPasswordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
-    token: resetTokenSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

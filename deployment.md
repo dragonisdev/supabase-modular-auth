@@ -45,11 +45,26 @@
 3. Add the exact production Redirect URLs:
    - `https://your-frontend.vercel.app/auth/google/callback`
    - `https://your-frontend.vercel.app/auth/verify`
-   - `https://your-frontend.vercel.app/reset-password`
+   - `https://your-frontend.vercel.app/auth/recovery/confirm`
 4. In the recommended Next.js proxy mode, Supabase redirects through the frontend origin, so the
    Railway backend URL does not need to be allowlisted.
 5. Prefer exact production URLs. If preview or local deployments require a wildcard, use `/**`, not
    `/*`; Supabase's single `*` does not match nested paths.
+
+### Password recovery email template
+
+The backend uses Supabase's PKCE flow, so the reset email must send a token hash to the backend-owned
+confirmation endpoint. In Authentication → Email Templates → Reset Password, make the reset link:
+
+```html
+<a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery">Reset password</a>
+```
+
+`POST /auth/forgot-password` supplies `${BACKEND_URL}/auth/recovery/confirm` as `RedirectTo`; in the
+recommended proxy mode, `BACKEND_URL` is the public frontend origin. Next.js proxies that route to
+Express, which verifies the hash and stores a short-lived recovery credential in an HttpOnly cookie
+before redirecting the user to `/reset-password`. Do not put `{{ .Token }}` or an access token
+directly into the reset page URL.
 
 ## Google OAuth setup
 

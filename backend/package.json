@@ -16,6 +16,7 @@
     "build": "tsc",
     "dev": "tsx watch --clear-screen=false src/index.ts",
     "start": "node dist/index.js",
+    "test:password-recovery": "tsx --test --test-force-exit ../test/password-recovery.test.ts",
     "type-check": "tsgo --noEmit"
   },
   "dependencies": {

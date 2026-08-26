@@ -1,4 +1,4 @@
-import { AUTH_CONSTANTS, USERNAME_PATTERN, JWT_PATTERN } from "@supabase-modular-auth/types";
+import { AUTH_CONSTANTS, USERNAME_PATTERN } from "@supabase-modular-auth/types";
 import xss from "xss";
 import { z } from "zod";
 import zxcvbn from "zxcvbn";
@@ -62,19 +62,11 @@ const safeUsername = z
   .regex(USERNAME_PATTERN, "Username can only contain letters, numbers, hyphens, and underscores")
   .transform(sanitizeString);
 
-// Reset token validation (JWT format check)
-const resetToken = z
+// Supabase email templates expose a one-time token hash for server-side verification.
+const recoveryTokenHash = z
   .string()
-  .min(10, "Invalid reset token")
-  .max(2048, "Invalid reset token format")
-  .refine(
-    (token) => {
-      return JWT_PATTERN.test(token);
-    },
-    {
-      message: "Invalid reset token format",
-    },
-  );
+  .min(10, "Invalid recovery token")
+  .max(2048, "Invalid recovery token format");
 
 /**
  * Registration Schema
@@ -116,5 +108,9 @@ export const forgotPasswordSchema = z.object({
  */
 export const resetPasswordSchema = z.object({
   password: strongPassword,
-  token: resetToken,
+});
+
+export const passwordRecoveryConfirmationSchema = z.object({
+  token_hash: recoveryTokenHash,
+  type: z.literal("recovery"),
 });

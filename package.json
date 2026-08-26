@@ -11,6 +11,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "start": "pnpm -r --parallel start",
+    "test:password-recovery": "pnpm --filter @supabase-modular-auth/types build && pnpm --filter @supabase-modular-auth/backend test:password-recovery",
     "type-check": "pnpm -r --parallel type-check"
   },
   "devDependencies": {

@@ -67,8 +67,9 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 ### Cookies & session
 
 - Access and refresh cookies are **HttpOnly** and **SameSite** per env. The refresh cookie name is derived as `${COOKIE_NAME}_refresh`.
+- Password recovery uses a separate, non-refreshable `${COOKIE_NAME}_password_recovery` HttpOnly cookie with a maximum 15-minute lifetime.
 - The access cookie follows the Supabase JWT lifetime. The refresh cookie uses the rolling `COOKIE_MAX_AGE_DAYS` browser lifetime (default seven days); Supabase project session policies may shorten it.
-- In production with `COOKIE_SECURE=true`, both cookie names are prefixed with **`__Host-`**.
+- In production with `COOKIE_SECURE=true`, all auth and recovery cookie names are prefixed with **`__Host-`**.
 - `COOKIE_DOMAIN` **must be empty** when using `__Host-` prefix.
 - Refreshes must use a request-scoped Supabase client. Never refresh through the process-wide anonymous client.
 - Terminal refresh failures clear both cookies. Retryable/network/429/5xx failures return a service error without destroying the session.
@@ -95,10 +96,11 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 - **Do not decode JWTs**; backend is source of truth.
 - Redirect to `/login` on `401` from protected calls.
 
-### Token handling
+### Password recovery token handling
 
-- Supabase sends reset/verify tokens in the URL **hash** (`#access_token=...`).
-- The frontend parses the hash and sends the token to `/auth/reset-password`.
+- The reset email sends a one-time `token_hash` to `GET /auth/recovery/confirm` through the Next.js proxy.
+- Express verifies the hash with Supabase and stores the resulting recovery access token in a short-lived HttpOnly cookie.
+- React never reads or submits a Supabase token; it submits only the new password to `/auth/reset-password`.
 
 ---
 
@@ -124,6 +126,7 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /auth/login`
 - `POST /auth/logout`
 - `POST /auth/forgot-password`
+- `GET /auth/recovery/confirm`
 - `POST /auth/reset-password`
 - `GET /auth/google/url`
 - `GET /auth/google/callback` (called by Google, not frontend)

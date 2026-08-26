@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
 import config from "../config/env.js";
@@ -12,13 +14,17 @@ import {
   setAuthCookies,
   clearAuthCookies,
   successResponse,
+  clearPasswordRecoveryCookie,
   getAuthTokenFromCookies,
+  getPasswordRecoveryTokenFromCookies,
   getRefreshTokenFromCookies,
+  setPasswordRecoveryCookie,
 } from "../utils/response.js";
 import {
   registerSchema,
   loginSchema,
   forgotPasswordSchema,
+  passwordRecoveryConfirmationSchema,
   resetPasswordSchema,
 } from "../validators/auth.validator.js";
 
@@ -445,10 +451,15 @@ export class AuthController {
 
       const { email } = validation.data;
       const supabase = SupabaseService.getClient();
+      const recoveryCallbackBase = config.BACKEND_URL || config.FRONTEND_URL;
+      const recoveryCallbackUrl = new URL(
+        "/auth/recovery/confirm",
+        recoveryCallbackBase,
+      ).toString();
 
       // Request password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${config.FRONTEND_URL}/reset-password`,
+        redirectTo: recoveryCallbackUrl,
       });
 
       if (error) {
@@ -458,6 +469,7 @@ export class AuthController {
 
       // Log password reset request
       SecurityLogger.logPasswordReset(email, req);
+      clearPasswordRecoveryCookie(res);
 
       // Always return success to prevent email enumeration
       successResponse(
@@ -470,8 +482,69 @@ export class AuthController {
   }
 
   /**
+   * GET /auth/recovery/confirm
+   * Verify the one-time token hash from the Supabase recovery email and move
+   * the resulting short-lived capability into an HttpOnly cookie.
+   */
+  async confirmPasswordRecovery(req: Request, res: Response): Promise<void> {
+    const successUrl = new URL("/reset-password", config.FRONTEND_URL);
+    successUrl.searchParams.set("recovery", "verified");
+
+    const errorUrl = new URL("/reset-password", config.FRONTEND_URL);
+    errorUrl.searchParams.set("error", "invalid_or_expired");
+
+    const unavailableUrl = new URL("/reset-password", config.FRONTEND_URL);
+    unavailableUrl.searchParams.set("error", "service_unavailable");
+
+    const validation = passwordRecoveryConfirmationSchema.safeParse(req.query);
+    if (!validation.success) {
+      clearPasswordRecoveryCookie(res);
+      SecurityLogger.logSecurityEvent("INVALID_PASSWORD_RECOVERY_LINK", req);
+      res.redirect(303, errorUrl.toString());
+      return;
+    }
+
+    try {
+      const supabase = SupabaseService.createSessionClient();
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: validation.data.token_hash,
+        type: validation.data.type,
+      });
+
+      const errorStatus = error && "status" in error ? error.status : undefined;
+      if (
+        error &&
+        (isAuthRetryableFetchError(error) ||
+          errorStatus === 429 ||
+          (typeof errorStatus === "number" && errorStatus >= 500))
+      ) {
+        SecurityLogger.logError(error, req, { operation: "confirm-password-recovery" });
+        res.redirect(303, unavailableUrl.toString());
+        return;
+      }
+
+      if (error || !data.session || !data.user) {
+        clearPasswordRecoveryCookie(res);
+        SecurityLogger.logSecurityEvent("INVALID_PASSWORD_RECOVERY_LINK", req);
+        res.redirect(303, errorUrl.toString());
+        return;
+      }
+
+      setPasswordRecoveryCookie(res, data.session);
+      SecurityLogger.logSecurityEvent("PASSWORD_RECOVERY_CONFIRMED", req, {
+        userId: data.user.id,
+      });
+      res.redirect(303, successUrl.toString());
+    } catch (error) {
+      clearPasswordRecoveryCookie(res);
+      SecurityLogger.logError(error as Error, req, { operation: "confirm-password-recovery" });
+      res.redirect(303, unavailableUrl.toString());
+    }
+  }
+
+  /**
    * POST /auth/reset-password
-   * Reset password using token from email
+   * Reset password using the short-lived HttpOnly recovery cookie.
    */
   async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -481,18 +554,32 @@ export class AuthController {
         throw new ValidationError("Invalid input", validation.error);
       }
 
-      const { password, token } = validation.data;
+      const { password } = validation.data;
+      const cookies = (req.cookies || {}) as Record<string, string>;
+      const recoveryToken = getPasswordRecoveryTokenFromCookies(cookies);
 
-      // Verify the token and get the user using anon client
-      const anonClient = SupabaseService.getClient();
+      if (!recoveryToken) {
+        SecurityLogger.logSecurityEvent("MISSING_PASSWORD_RECOVERY_TOKEN", req);
+        throw new AuthError(
+          "Password reset link is invalid or expired. Please request a new one.",
+          ErrorCode.INVALID_TOKEN,
+        );
+      }
+
+      // Validate the recovery capability on a request-scoped client.
+      const anonClient = SupabaseService.createSessionClient();
       const {
         data: { user },
         error: userError,
-      } = await anonClient.auth.getUser(token);
+      } = await anonClient.auth.getUser(recoveryToken);
 
       if (userError || !user) {
+        clearPasswordRecoveryCookie(res);
         SecurityLogger.logSecurityEvent("INVALID_RESET_TOKEN", req);
-        throw new AuthError("Password reset link is invalid or expired. Please request a new one.");
+        throw new AuthError(
+          "Password reset link is invalid or expired. Please request a new one.",
+          ErrorCode.INVALID_TOKEN,
+        );
       }
 
       // Use admin client to update the password
@@ -511,8 +598,10 @@ export class AuthController {
           errorMessage.includes("invalid") ||
           errorMessage.includes("expired")
         ) {
+          clearPasswordRecoveryCookie(res);
           throw new AuthError(
             "Password reset link is invalid or expired. Please request a new one.",
+            ErrorCode.INVALID_TOKEN,
           );
         }
 
@@ -535,6 +624,7 @@ export class AuthController {
 
       // Password changes invalidate the browser-managed session.
       clearAuthCookies(res);
+      clearPasswordRecoveryCookie(res);
 
       SecurityLogger.logSecurityEvent("PASSWORD_RESET_SUCCESS", req, { userId: user.id });
 

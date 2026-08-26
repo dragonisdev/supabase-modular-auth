@@ -11,6 +11,7 @@ export enum ErrorCode {
   USER_NOT_FOUND = "USER_NOT_FOUND",
   RATE_LIMITED = "RATE_LIMITED",
   REGISTRATION_FAILED = "REGISTRATION_FAILED",
+  INVALID_TOKEN = "INVALID_TOKEN",
 }
 
 export class AppError extends Error {

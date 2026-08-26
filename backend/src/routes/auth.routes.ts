@@ -107,8 +107,14 @@ router.post("/forgot-password", sensitiveAuthLimiter, (req, res, next) =>
 );
 
 /**
+ * GET /auth/recovery/confirm
+ * Verify the one-time recovery token hash from the Supabase email.
+ */
+router.get("/recovery/confirm", (req, res) => authController.confirmPasswordRecovery(req, res));
+
+/**
  * POST /auth/reset-password
- * Reset password using token from email
+ * Reset password using the HttpOnly recovery cookie.
  * Uses stricter rate limiting
  */
 router.post("/reset-password", sensitiveAuthLimiter, (req, res, next) =>

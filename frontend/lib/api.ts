@@ -235,10 +235,10 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
-  resetPassword: (password: string, token: string) =>
+  resetPassword: (password: string) =>
     fetchAPI("/auth/reset-password", {
       method: "POST",
-      body: JSON.stringify({ password, token }),
+      body: JSON.stringify({ password }),
     }),
 
   getMe: () => fetchAPI<GetMeResponseData>("/auth/me"),

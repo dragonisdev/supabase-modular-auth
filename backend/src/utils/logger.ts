@@ -93,7 +93,8 @@ export function logError(error: Error, req?: Request, context?: Record<string, u
     errorInfo.requestId = req.id;
     errorInfo.ip = req.ip;
     errorInfo.method = req.method;
-    errorInfo.url = req.originalUrl;
+    // Query strings can contain OAuth codes and one-time recovery hashes.
+    errorInfo.url = req.path;
     errorInfo.userAgent = req.get("User-Agent");
   }
 
