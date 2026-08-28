@@ -122,7 +122,7 @@ paths:
           csrfHeader: []
       responses:
         "200":
-          $ref: "#/components/responses/SimpleSuccess"
+          $ref: "#/components/responses/LogoutSuccess"
         "403":
           $ref: "#/components/responses/Forbidden"
         "408":
@@ -720,6 +720,17 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/LoginResponse"
+    LogoutSuccess:
+      description: Session revoked where possible and authentication cookies cleared.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+        Set-Cookie:
+          $ref: "#/components/headers/SetCookie"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SimpleSuccessResponse"
     OAuthUrlSuccess:
       description: Authorization URL generated.
       headers:

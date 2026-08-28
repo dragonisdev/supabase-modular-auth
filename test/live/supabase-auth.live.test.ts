@@ -70,5 +70,6 @@ describeLive("live Supabase session rotation", () => {
     expect(refreshed.error).toBeNull();
     expect(refreshed.data.session?.access_token).toBeTruthy();
     expect(refreshed.data.session?.refresh_token).toBeTruthy();
+    expect(refreshed.data.session?.refresh_token).not.toBe(originalSession.refresh_token);
   });
 });

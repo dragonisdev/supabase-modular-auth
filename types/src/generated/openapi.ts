@@ -617,6 +617,17 @@ export interface components {
                 "application/json": components["schemas"]["LoginResponse"];
             };
         };
+        /** @description Session revoked where possible and authentication cookies cleared. */
+        LogoutSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                "Set-Cookie": components["headers"]["SetCookie"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["SimpleSuccessResponse"];
+            };
+        };
         /** @description Authorization URL generated. */
         OAuthUrlSuccess: {
             headers: {
@@ -890,7 +901,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: components["responses"]["SimpleSuccess"];
+            200: components["responses"]["LogoutSuccess"];
             403: components["responses"]["Forbidden"];
             408: components["responses"]["RequestTimeout"];
             429: components["responses"]["TooManyRequests"];

@@ -5,6 +5,7 @@ import { parse } from "yaml";
 interface WorkflowStep {
   run?: string;
   uses?: string;
+  with?: Record<string, unknown>;
 }
 
 interface WorkflowJob {
@@ -63,6 +64,15 @@ describe("CI workflow contract", () => {
 
     expect(actions).not.toHaveLength(0);
     expect(actions.every((action) => /@[0-9a-f]{40}$/.test(action))).toBe(true);
+  });
+
+  it("does not persist checkout credentials", () => {
+    const checkoutSteps = Object.values(workflow.jobs ?? {}).flatMap(
+      (job) => job.steps?.filter((step) => step.uses?.startsWith("actions/checkout@")) ?? [],
+    );
+
+    expect(checkoutSteps).not.toHaveLength(0);
+    expect(checkoutSteps.every((step) => step.with?.["persist-credentials"] === false)).toBe(true);
   });
 
   it("runs migration and RLS tests against disposable PostgreSQL", () => {

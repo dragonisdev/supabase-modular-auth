@@ -123,8 +123,12 @@ describe("Express security surface", () => {
       username: "test-user",
     });
     const cookies = getSetCookies(response.headers);
-    expect(cookies.some((cookie) => cookie.startsWith("auth_token="))).toBe(true);
-    expect(cookies.some((cookie) => cookie.startsWith("auth_token_refresh="))).toBe(true);
+    const accessCookie = cookies.find((cookie) => cookie.startsWith("auth_token="));
+    const refreshCookie = cookies.find((cookie) => cookie.startsWith("auth_token_refresh="));
+    expect(accessCookie).toBeTruthy();
+    expect(refreshCookie).toBeTruthy();
+    expect(getCookieValue(getCookiePair(accessCookie!))).toBe(session.access_token);
+    expect(getCookieValue(getCookiePair(refreshCookie!))).toBe(session.refresh_token);
   });
 
   it("returns 503 without deleting cookies when Supabase validation is transiently down", async () => {

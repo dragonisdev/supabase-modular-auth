@@ -59,8 +59,14 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
 
   it("enables RLS and denies browser roles access to audit logs", async () => {
     const result = await client.query<{
+      authenticated_delete: boolean;
+      authenticated_insert: boolean;
       authenticated_select: boolean;
+      authenticated_update: boolean;
+      anon_delete: boolean;
+      anon_insert: boolean;
       anon_select: boolean;
+      anon_update: boolean;
       rls_enabled: boolean;
       service_insert: boolean;
       service_select: boolean;
@@ -68,7 +74,13 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
       select
         c.relrowsecurity as rls_enabled,
         has_table_privilege('anon', 'public.admin_audit_logs', 'select') as anon_select,
+        has_table_privilege('anon', 'public.admin_audit_logs', 'insert') as anon_insert,
+        has_table_privilege('anon', 'public.admin_audit_logs', 'update') as anon_update,
+        has_table_privilege('anon', 'public.admin_audit_logs', 'delete') as anon_delete,
         has_table_privilege('authenticated', 'public.admin_audit_logs', 'select') as authenticated_select,
+        has_table_privilege('authenticated', 'public.admin_audit_logs', 'insert') as authenticated_insert,
+        has_table_privilege('authenticated', 'public.admin_audit_logs', 'update') as authenticated_update,
+        has_table_privilege('authenticated', 'public.admin_audit_logs', 'delete') as authenticated_delete,
         has_table_privilege('service_role', 'public.admin_audit_logs', 'select') as service_select,
         has_table_privilege('service_role', 'public.admin_audit_logs', 'insert') as service_insert
       from pg_class c
@@ -78,8 +90,14 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
 
     expect(result.rows).toEqual([
       {
+        authenticated_delete: false,
+        authenticated_insert: false,
         authenticated_select: false,
+        authenticated_update: false,
+        anon_delete: false,
+        anon_insert: false,
         anon_select: false,
+        anon_update: false,
         rls_enabled: true,
         service_insert: true,
         service_select: true,
