@@ -1,0 +1,17 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "declaration": false,
+    "incremental": false,
+    "isolatedDeclarations": false,
+    "lib": ["ESNext", "DOM"],
+    "noEmit": true,
+    "paths": {
+      "@supabase-modular-auth/types": ["../types/src/index.ts"]
+    },
+    "rootDir": "..",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["./**/*.ts", "../vitest.config.ts"]
+}

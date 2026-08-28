@@ -234,6 +234,9 @@ See [frontend/frontend.md](frontend/frontend.md) for flow details.
 
 - `backend/` — Express API, routes, controllers, middleware, services, validators.
 - `frontend/` — Next.js App Router pages and minimal UI flows.
+- `openapi/` — the OpenAPI 3.1 API contract; generated TypeScript is exported from `types/`.
+- `test/` — mocked, contract, migration/RLS, and opt-in live Supabase tests. See [test/README.md](test/README.md).
+- `.github/workflows/ci.yml` — formatting, lint, types, contract drift, tests, build, and database validation.
 - `tsconfig.json` — root TypeScript config references.
 
 ## Customization
