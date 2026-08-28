@@ -8,7 +8,7 @@ The backend may add stricter validation than the browser. For example, password 
 
 ## HTTP contract
 
-`openapi/openapi.yaml` is the canonical operation and payload description. Contract tests compare it with Express route definitions and verify security requirements. Run:
+`docs/api/openapi.yaml` is the canonical operation and payload description. Contract tests compare it with Express route definitions and verify security requirements. Run:
 
 ```bash
 pnpm api:generate

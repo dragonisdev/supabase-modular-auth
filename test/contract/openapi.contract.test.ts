@@ -55,7 +55,7 @@ interface ContractOperation {
 const readFixture = (relativePath: string): string =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8");
 
-const specificationText = readFixture("../../openapi/openapi.yaml");
+const specificationText = readFixture("../../docs/api/openapi.yaml");
 const specification = parse(specificationText) as OpenApiDocument;
 
 const isHttpMethod = (value: string): value is HttpMethod =>

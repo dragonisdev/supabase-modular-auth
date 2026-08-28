@@ -40,10 +40,9 @@ Key backend chain: **Middleware → Routes → Controllers → Services → Supa
 │  ├─ app/             # routes & pages
 │  ├─ components/      # form inputs, csrf provider
 │  └─ lib/             # API client
-├─ openapi/            # OpenAPI 3.1 source contract
 ├─ test/               # Mocked, contract, database, and opt-in live tests
 ├─ types/              # Shared schemas + generated API contract types
-├─ docs/               # Architecture, setup, configuration, and operations
+├─ docs/               # Guides plus the OpenAPI 3.1 source contract and checker
 ├─ compose.yaml        # Local container development stack
 ├─ compose.production.yaml # Single-VM production baseline
 └─ .github/workflows/  # Continuous integration

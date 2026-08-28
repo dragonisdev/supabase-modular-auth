@@ -28,7 +28,7 @@ Express routes
 | `frontend/` | Routes, forms, browser UX, first-party proxying              |
 | `backend/`  | HTTP API, security policy, Supabase access, admin operations |
 | `types/`    | Shared Zod schemas, response types, generated OpenAPI types  |
-| `openapi/`  | Canonical HTTP operation and payload contract                |
+| `docs/api/` | Canonical HTTP operation and payload contract                |
 
 ## Intentional limits
 

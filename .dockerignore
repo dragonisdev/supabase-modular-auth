@@ -24,5 +24,4 @@ logs
 *.log
 
 docs
-openapi
 test

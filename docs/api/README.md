@@ -1,6 +1,6 @@
 # API contract
 
-The canonical API specification is [`openapi/openapi.yaml`](../../openapi/openapi.yaml). It covers all current Express health, authentication, session, OAuth, and admin operations.
+The canonical API specification is [`openapi.yaml`](openapi.yaml). It covers all current Express health, authentication, session, OAuth, and admin operations. Its colocated `check-openapi.mjs` script verifies that the generated TypeScript contract is current.
 
 Useful commands:
 

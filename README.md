@@ -22,7 +22,7 @@ Then open `http://localhost:3001`. A Docker-based development path is documented
 - `frontend/` — Next.js UI and same-origin proxy
 - `backend/` — Express auth/admin API
 - `types/` — shared Zod and generated OpenAPI types
-- `openapi/` — canonical API specification
+- `docs/` — centralized guides and canonical API specification
 - `test/` — unit, integration, contract, database, and opt-in live tests
 
 ## Documentation
