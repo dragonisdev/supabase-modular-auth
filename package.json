@@ -8,7 +8,7 @@
     "api:check": "node scripts/check-openapi.mjs",
     "api:generate": "openapi-typescript openapi/openapi.yaml -o types/src/generated/openapi.ts",
     "build": "pnpm --filter types build && pnpm --filter backend build && pnpm --filter frontend build",
-    "dev": "pnpm -r --parallel dev",
+    "dev": "pnpm --filter @supabase-modular-auth/types build && pnpm -r --parallel dev",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint",

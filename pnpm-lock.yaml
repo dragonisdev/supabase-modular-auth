@@ -68,9 +68,6 @@ importers:
 
   backend:
     dependencies:
-      '@dotenvx/dotenvx':
-        specifier: ^1.54.1
-        version: 1.54.1
       '@supabase-modular-auth/types':
         specifier: workspace:*
         version: link:../types

@@ -41,7 +41,7 @@ const getCookieOptions = (maxAge: number): CookieOptions => {
   const options: CookieOptions = {
     httpOnly: true, // Prevents JavaScript access (XSS protection)
     secure: config.COOKIE_SECURE, // HTTPS only
-    sameSite: config.COOKIE_SAME_SITE, // CSRF protection
+    sameSite: config.COOKIE_SAME_SITE, // Cookie policy and CSRF defense in depth
     maxAge,
     path: "/",
   };
@@ -97,24 +97,17 @@ export const clearAuthCookies = (res: Response): void => {
 };
 
 /**
- * Get the auth token from request cookies
- * Handles both prefixed and non-prefixed cookie names
+ * Get the access token from the canonical cookie for the active environment.
  */
 export const getAuthTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
-  const prefixedName = getAccessCookieName();
-
-  // Try prefixed name first, then fall back to non-prefixed
-  return cookies[prefixedName] || cookies[config.COOKIE_NAME];
+  return cookies[getAccessCookieName()];
 };
 
 /**
- * Get the rotating refresh token from request cookies.
+ * Get the rotating refresh token from the canonical cookie for the active environment.
  */
 export const getRefreshTokenFromCookies = (cookies: Record<string, string>): string | undefined => {
-  const baseName = `${config.COOKIE_NAME}${REFRESH_COOKIE_SUFFIX}`;
-  const prefixedName = getRefreshCookieName();
-
-  return cookies[prefixedName] || cookies[baseName];
+  return cookies[getRefreshCookieName()];
 };
 
 /**
