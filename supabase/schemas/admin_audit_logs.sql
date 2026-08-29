@@ -1,8 +1,6 @@
 -- Desired state for durable, service-role-only admin audit logging.
 -- Edit this file first, then generate and review a migration with `pnpm supabase:schema:diff --name <name>`.
 
-create extension if not exists pgcrypto;
-
 create table public.admin_audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_user_id uuid not null,

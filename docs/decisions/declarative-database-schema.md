@@ -15,6 +15,9 @@ database also relies on PostgreSQL-specific features such as RLS, grants, trigge
 - Files under `supabase/schemas/` are the declarative source of truth for supported database
   objects.
 - Files under `supabase/migrations/` remain the immutable, ordered deployment history.
+- Supabase baseline extensions required by comparison are declared explicitly in
+  `supabase/schemas/extensions.sql`; generated full exports remain review artifacts unless this
+  decision is deliberately revisited.
 - Developers edit the declarative schema first and run `pnpm supabase:schema:diff --name <name>` to
   generate a migration. Every generated migration must be reviewed before it is committed or applied.
 - Applied migrations are never regenerated, renamed, or edited. A later schema change produces a new

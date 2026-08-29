@@ -7,7 +7,7 @@ supabase/
 ├─ queries/                 # Manual operator queries; never applied automatically
 │  └─ admin/
 ├─ config.toml              # Secret-free local Supabase configuration
-├─ schemas/                 # Declarative desired state; edit these first
+├─ schemas/                 # Declarative desired state and explicit extension baseline
 ├─ migrations/              # Ordered, immutable schema migrations
 └─ tests/                   # pgTAP database security tests
 ```
@@ -20,6 +20,8 @@ pnpm supabase:schema:diff --name add_projects
 
 The schema files describe the desired state; migrations remain the versioned deployment history.
 Review generated SQL for destructive operations and data-preserving transitions before committing it.
+Keep required Supabase extensions explicit in `schemas/extensions.sql`; do not commit a generated
+`schemas-next/` export alongside the maintained schema tree.
 
 Run the local migration checks from the repository root:
 

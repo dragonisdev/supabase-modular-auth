@@ -40,6 +40,7 @@ describe("database layout contract", () => {
         "supabase/queries/admin/promote_user_to_admin.sql",
         "supabase/migrations/20260311000000_admin_audit_logs.sql",
         "supabase/schemas/admin_audit_logs.sql",
+        "supabase/schemas/extensions.sql",
         "supabase/tests/admin_audit_logs.test.sql",
       ]),
     );
@@ -90,5 +91,16 @@ describe("database layout contract", () => {
     expect(schema).toContain("create trigger admin_audit_logs_prevent_mutation");
     expect(schema).toContain("security definer");
     expect(schema).toContain("set search_path = public");
+  });
+
+  it("declares Supabase baseline extensions explicitly", () => {
+    const extensions = readSupabaseFile("schemas/extensions.sql").toLowerCase();
+
+    expect(extensions).toContain(
+      'create extension if not exists "pgcrypto" with schema "extensions"',
+    );
+    expect(extensions).toContain(
+      'create extension if not exists "uuid-ossp" with schema "extensions"',
+    );
   });
 });

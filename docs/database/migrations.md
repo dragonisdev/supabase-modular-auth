@@ -7,7 +7,8 @@ supabase/
 ├─ queries/admin/                     # Manual, fail-closed operator queries
 ├─ config.toml                        # Secret-free local project configuration
 ├─ schemas/
-│  └─ admin_audit_logs.sql            # Declarative desired state
+│  ├─ extensions.sql                  # Explicit Supabase extension baseline
+│  └─ admin_audit_logs.sql            # Application-owned desired state
 ├─ migrations/
 │  └─ 20260311000000_admin_audit_logs.sql
 └─ tests/admin_audit_logs.test.sql    # pgTAP security checks
@@ -26,6 +27,11 @@ Review the generated file under `supabase/migrations/`, paying particular attent
 renames, locks, and data preservation. The declarative files show the target state; the immutable
 migrations remain the only artifacts applied to shared environments. Data backfills and changes not
 captured by schema diff still require a reviewed, additive migration.
+
+Keep platform extensions required by the declarative comparison explicit in `schemas/extensions.sql`.
+Older schema exports treated extensions such as `uuid-ossp` as implicit; declaring them prevents
+pg-delta from interpreting their omission as a requested drop. A generated `schemas-next/` directory
+is a review-only full export and should not be committed alongside the maintained schema tree.
 
 The decision and revisit conditions are recorded in [Declarative database schema](../decisions/declarative-database-schema.md).
 
