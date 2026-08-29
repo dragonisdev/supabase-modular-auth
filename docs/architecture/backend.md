@@ -32,4 +32,4 @@ The HTTP API is mostly stateless, but the current lockout implementation, rate-l
 
 ## API and data
 
-The endpoint contract is [OpenAPI](../api/README.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md).
+The endpoint contract is [OpenAPI](../api.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md).

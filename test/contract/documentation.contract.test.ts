@@ -44,7 +44,7 @@ describe("documentation contract", () => {
       "docs/architecture/backend.md",
       "docs/architecture/frontend.md",
       "docs/configuration/environment.md",
-      "docs/testing/README.md",
+      "docs/testing.md",
     ];
 
     expect(required.every((path) => existsSync(resolve(repositoryRoot, path)))).toBe(true);

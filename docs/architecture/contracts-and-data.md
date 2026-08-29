@@ -23,4 +23,4 @@ Supabase Auth owns identity tables. The application does not introduce custom pa
 
 There is no tenant-owned product table yet. Static tests require future `tenant_id` tables to enable RLS and define tenant-aware policies; real seeded cross-tenant behavior tests must arrive with the first such schema.
 
-See [Database migrations](../database/migrations.md) and [Testing](../testing/README.md).
+See [Database migrations](../database/migrations.md) and [Testing](../testing.md).

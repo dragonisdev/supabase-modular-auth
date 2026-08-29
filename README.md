@@ -31,8 +31,8 @@ Then open `http://localhost:3001`. A Docker-based development path is documented
 - [Setup and deployment](docs/setup.md)
 - [Architecture](docs/architecture/overview.md)
 - [Environment variables and secrets](docs/configuration/environment.md)
-- [API contract](docs/api/README.md)
-- [Testing](docs/testing/README.md)
+- [API contract](docs/api.md)
+- [Testing](docs/testing.md)
 - [Contributor/agent rules](AGENTS.md)
 
 This starter intentionally has no product branding or tenant-owned product schema yet. Add those only when the product domain is known.

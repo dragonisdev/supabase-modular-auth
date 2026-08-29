@@ -155,6 +155,8 @@ For two VMs, place both on a private network, build the frontend with the backen
 
 ## Admin bootstrap
 
+See [Admin access](operations/admin-access.md) for the short operational reference and reusable SQL examples.
+
 Register and confirm the first account, copy its UUID from Supabase Authentication > Users, and run this once in the Supabase SQL editor after replacing the placeholder:
 
 ```sql
