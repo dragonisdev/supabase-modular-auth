@@ -96,7 +96,7 @@ describe("CI workflow contract", () => {
         "pnpm supabase:stop",
       ]),
     );
-    expect(cleanup?.if).toBe("always()");
+    expect(cleanup?.if).toBe("${{ always() && steps.supabase-start.outcome == 'success' }}");
   });
 
   it("builds both production container images", () => {

@@ -111,6 +111,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Start Supabase database and apply migrations
+        id: supabase-start
         run: pnpm supabase:start
 
       - name: Lint Supabase schema
@@ -123,5 +124,5 @@ jobs:
         run: pnpm test:database
 
       - name: Stop Supabase database
-        if: always()
+        if: ${{ always() && steps.supabase-start.outcome == 'success' }}
         run: pnpm supabase:stop
