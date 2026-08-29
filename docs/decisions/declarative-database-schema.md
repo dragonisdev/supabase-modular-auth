@@ -15,7 +15,7 @@ database also relies on PostgreSQL-specific features such as RLS, grants, trigge
 - Files under `supabase/schemas/` are the declarative source of truth for supported database
   objects.
 - Files under `supabase/migrations/` remain the immutable, ordered deployment history.
-- Developers edit the declarative schema first and run `pnpm supabase:schema:diff -f <name>` to
+- Developers edit the declarative schema first and run `pnpm supabase:schema:diff --name <name>` to
   generate a migration. Every generated migration must be reviewed before it is committed or applied.
 - Applied migrations are never regenerated, renamed, or edited. A later schema change produces a new
   forward migration.
@@ -30,8 +30,9 @@ database also relies on PostgreSQL-specific features such as RLS, grants, trigge
 
 The desired schema and the migration history intentionally represent different concerns: one shows
 the current target state, while the other records how deployed databases reach it. CI continues to
-apply migrations to a fresh local Supabase database and test security behavior. Generated SQL still
-requires human review, especially for destructive changes, renames, and data-preserving transitions.
+apply migrations to a fresh local Supabase database, reject declarative drift through a strict schema
+diff, and test security behavior. Generated SQL still requires human review, especially for
+destructive changes, renames, and data-preserving transitions.
 
 The first template models `public.admin_audit_logs` and its indexes, grants, RLS posture, trigger, and
 functions. Product or tenant-owned tables are deferred until the product domain and ownership rules

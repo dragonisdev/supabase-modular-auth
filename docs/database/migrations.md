@@ -19,7 +19,7 @@ Treat `supabase/schemas/` as the source of truth for the desired database shape.
 files instead of making schema changes in Studio or the hosted SQL editor, then generate a migration:
 
 ```bash
-pnpm supabase:schema:diff -f describe_the_change
+pnpm supabase:schema:diff --name describe_the_change
 ```
 
 Review the generated file under `supabase/migrations/`, paying particular attention to drops,
@@ -35,12 +35,17 @@ With Docker running, use the pinned Supabase CLI from the repository:
 
 ```bash
 pnpm supabase:start
+pnpm supabase:schema:check
 pnpm supabase:lint
 pnpm supabase:test
 pnpm supabase:stop
 ```
 
-`supabase:start` starts the local PostgreSQL service and applies the migrations. Lint checks PL/pgSQL in `public`; the pgTAP suite verifies RLS, grants, function privileges, fixed search paths, and the append-only trigger. No hosted credentials are needed.
+`supabase:start` starts the local PostgreSQL service and applies the migrations. The schema check runs
+a strict declarative diff and fails if `supabase/schemas/` would generate another migration; its
+temporary check migration is removed automatically. Lint checks PL/pgSQL in `public`; the pgTAP suite
+verifies RLS, grants, function privileges, fixed search paths, and the append-only trigger. No hosted
+credentials are needed.
 
 The deterministic test suite also enforces layout, timestamp, RLS, and query-safety policy without Docker:
 

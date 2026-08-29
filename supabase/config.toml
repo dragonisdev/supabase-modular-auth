@@ -33,7 +33,7 @@ enabled = false
 [db]
 # Port to use for the local database URL.
 port = 54322
-# Port used by db diff command to initialize the shadow database.
+# Port used by schema diff commands, including declarative sync, to initialize the shadow database.
 shadow_port = 54320
 # Maximum amount of time to wait for health check when starting the local database.
 health_timeout = "2m"
@@ -408,7 +408,7 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
 
-# pg-delta is the schema diff engine for db diff / db pull / db remote commit.
+# pg-delta is the schema diff engine for declarative sync / db diff / db pull / db remote commit.
 # Set enabled = false to fall back to the legacy migra engine.
 [experimental.pgdelta]
 enabled = true

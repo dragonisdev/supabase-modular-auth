@@ -22,12 +22,16 @@ With Docker running, the pinned Supabase CLI also validates the real project lay
 
 ```bash
 pnpm supabase:start
+pnpm supabase:schema:check
 pnpm supabase:lint
 pnpm supabase:test
 pnpm supabase:stop
 ```
 
-The start command applies `supabase/migrations/`; lint checks the resulting `public` schema, and the pgTAP suite verifies database privileges and security properties. None of these commands uses a hosted project.
+The start command applies `supabase/migrations/`; the strict schema check rejects drift between those
+migrations and `supabase/schemas/`; lint checks the resulting `public` schema; and the pgTAP suite
+verifies database privileges and security properties. The drift checker removes only the temporary
+migration it creates. None of these commands uses a hosted project.
 
 Live Supabase auth is opt-in and creates, verifies, refreshes, then deletes a temporary user. Prefer a local or dedicated test project. Remote projects also require `ALLOW_REMOTE_SUPABASE_TESTS=true`:
 
@@ -41,4 +45,6 @@ pnpm test:live
 
 There is no tenant-owned product table yet, so a real two-tenant behavioral RLS test would be fictional. The static suite requires RLS and a tenant-aware policy on future tables with `tenant_id`; add seeded isolation tests with the first such schema.
 
-GitHub Actions also runs formatting, linting, workspace/test type checks, OpenAPI drift detection, coverage, production package and container builds, Compose validation, pinned Supabase CLI migration/lint/pgTAP checks, and disposable-database behavior tests.
+GitHub Actions also runs formatting, linting, workspace/test type checks, OpenAPI and declarative-schema
+drift detection, coverage, production package and container builds, Compose validation, pinned
+Supabase CLI migration/lint/pgTAP checks, and disposable-database behavior tests.

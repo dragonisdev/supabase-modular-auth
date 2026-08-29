@@ -1,5 +1,5 @@
 -- Desired state for durable, service-role-only admin audit logging.
--- Edit this file first, then generate and review a migration with `pnpm supabase:schema:diff -f <name>`.
+-- Edit this file first, then generate and review a migration with `pnpm supabase:schema:diff --name <name>`.
 
 create extension if not exists pgcrypto;
 

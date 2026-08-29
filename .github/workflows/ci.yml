@@ -114,6 +114,9 @@ jobs:
         id: supabase-start
         run: pnpm supabase:start
 
+      - name: Check declarative schema for migration drift
+        run: pnpm supabase:schema:check
+
       - name: Lint Supabase schema
         run: pnpm supabase:lint
 

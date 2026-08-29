@@ -27,6 +27,10 @@ const workflow = parse(
 const packageJson = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ) as { devDependencies?: Record<string, string>; scripts?: Record<string, string> };
+const schemaDriftChecker = readFileSync(
+  new URL("../../docs/database/check-schema-drift.mjs", import.meta.url),
+  "utf8",
+);
 
 const getRunSteps = (job: WorkflowJob | undefined): string[] =>
   job?.steps?.flatMap((step) => (step.run ? [step.run] : [])) ?? [];
@@ -87,14 +91,30 @@ describe("CI workflow contract", () => {
     expect(databaseJob?.services).toBeUndefined();
     expect(databaseJob?.env?.ALLOW_DATABASE_CLUSTER_MUTATIONS).toBe("true");
     expect(databaseJob?.env?.TEST_DATABASE_URL).toContain("127.0.0.1:54322");
+    expect(packageJson.scripts?.["supabase:schema:check"]).toBe(
+      "node docs/database/check-schema-drift.mjs",
+    );
+    expect(packageJson.scripts?.["supabase:schema:diff"]).toBe(
+      "supabase db schema declarative sync --no-apply --strict-coverage",
+    );
+    expect(schemaDriftChecker).toContain('"declarative"');
+    expect(schemaDriftChecker).toContain('"--no-apply"');
+    expect(schemaDriftChecker).toContain('"--strict-coverage"');
     expect(runSteps).toEqual(
       expect.arrayContaining([
         "pnpm supabase:start",
+        "pnpm supabase:schema:check",
         "pnpm supabase:lint",
         "pnpm supabase:test",
         "pnpm test:database",
         "pnpm supabase:stop",
       ]),
+    );
+    expect(runSteps.indexOf("pnpm supabase:start")).toBeLessThan(
+      runSteps.indexOf("pnpm supabase:schema:check"),
+    );
+    expect(runSteps.indexOf("pnpm supabase:schema:check")).toBeLessThan(
+      runSteps.indexOf("pnpm supabase:lint"),
     );
     expect(cleanup?.if).toBe("${{ always() && steps.supabase-start.outcome == 'success' }}");
   });

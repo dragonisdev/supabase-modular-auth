@@ -219,7 +219,8 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - `pnpm test:type-check` — typecheck the root test suite
 - `pnpm test:coverage` — run the default suite with coverage
 - `pnpm api:check` — generate the OpenAPI TypeScript contract in memory and fail on drift
-- `pnpm supabase:schema:diff -f <name>` — generate a migration from the declarative schema
+- `pnpm supabase:schema:check` — fail when the declarative schema and migration history drift
+- `pnpm supabase:schema:diff --name <name>` — generate a migration from the declarative schema
 - `pnpm test:database` — include live migration/RLS checks when `TEST_DATABASE_URL` is set
 - `pnpm compose:check` — validate development and production Compose files
 - `pnpm compose:dev` — build and run the local container stack

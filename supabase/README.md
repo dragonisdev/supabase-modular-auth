@@ -15,7 +15,7 @@ supabase/
 For schema changes, edit `supabase/schemas/` and generate a migration for review:
 
 ```bash
-pnpm supabase:schema:diff -f add_projects
+pnpm supabase:schema:diff --name add_projects
 ```
 
 The schema files describe the desired state; migrations remain the versioned deployment history.
