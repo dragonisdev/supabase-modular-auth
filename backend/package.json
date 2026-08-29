@@ -14,7 +14,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "node --watch --watch-preserve-output --import tsx src/index.ts",
+    "dev": "nodemon --watch src --watch ../types/dist --ext ts,js,json --exec \"node --import tsx src/index.ts\"",
     "start": "node dist/index.js",
     "type-check": "tsgo --noEmit"
   },
@@ -40,6 +40,7 @@
     "@types/node": "catalog:",
     "@types/zxcvbn": "^4.4.5",
     "@typescript/native-preview": "latest",
+    "nodemon": "^3.1.14",
     "tsx": "^4.21.0"
   },
   "packageManager": "pnpm@10.32.1"
