@@ -219,6 +219,7 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - `pnpm test:type-check` — typecheck the root test suite
 - `pnpm test:coverage` — run the default suite with coverage
 - `pnpm api:check` — generate the OpenAPI TypeScript contract in memory and fail on drift
+- `pnpm supabase:schema:diff -f <name>` — generate a migration from the declarative schema
 - `pnpm test:database` — include live migration/RLS checks when `TEST_DATABASE_URL` is set
 - `pnpm compose:check` — validate development and production Compose files
 - `pnpm compose:dev` — build and run the local container stack
@@ -247,7 +248,8 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - There is no tenant-owned product table yet. The migration tests require RLS and a policy for any
   future table containing `tenant_id`; add two-tenant behavioral tests with the first such schema.
 - `database/` is the canonical home for database workflow SQL. The three documented legacy
-  admin-bootstrap examples remain outside it and are never migrations or seeds. Treat
+  admin-bootstrap examples remain outside it and are never migrations or seeds. Edit
+  `database/supabase/schemas/` as the declarative source of truth and treat generated files in
   `database/supabase/migrations/` as ordered, immutable history after application. Files in
   `database/queries/` are manual operator tools and must never run as migrations or seeds.
 - **Safari/ITP** may block third‑party cookies. Prefer same-origin proxying via `FRONTEND_PROXY_TARGET` or keep frontend/backend on the same site.

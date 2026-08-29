@@ -45,6 +45,7 @@ describe("database layout contract", () => {
         "database/queries/admin/inspect_user_metadata.sql",
         "database/queries/admin/promote_user_to_admin.sql",
         "database/supabase/migrations/20260311000000_admin_audit_logs.sql",
+        "database/supabase/schemas/admin_audit_logs.sql",
         "database/supabase/tests/admin_audit_logs.test.sql",
       ]),
     );
@@ -81,8 +82,23 @@ describe("database layout contract", () => {
     const config = readDatabaseFile("supabase/config.toml");
 
     expect(config).toContain('project_id = "supabase-saas-starter"');
+    expect(config).toContain('schema_paths = ["./schemas/*.sql"]');
     expect(config).toContain('site_url = "http://localhost:3001"');
     expect(config).toMatch(/\[db\.seed\][\s\S]*?enabled = false/);
     expect(config).toMatch(/\[auth\.email\][\s\S]*?enable_confirmations = true/);
+  });
+
+  it("declares the current audit-log security contract as desired state", () => {
+    const schema = readDatabaseFile("supabase/schemas/admin_audit_logs.sql").toLowerCase();
+
+    expect(schema).toContain("create table public.admin_audit_logs");
+    expect(schema).toContain("enable row level security");
+    expect(schema).toContain(
+      "revoke all on public.admin_audit_logs from public, anon, authenticated, service_role",
+    );
+    expect(schema).toContain("grant select, insert on public.admin_audit_logs to service_role");
+    expect(schema).toContain("create trigger admin_audit_logs_prevent_mutation");
+    expect(schema).toContain("security definer");
+    expect(schema).toContain("set search_path = public");
   });
 });

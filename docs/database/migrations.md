@@ -7,10 +7,28 @@ database/
 ├─ queries/admin/                     # Manual, fail-closed operator queries
 └─ supabase/
    ├─ config.toml                     # Secret-free local project configuration
+   ├─ schemas/
+   │  └─ admin_audit_logs.sql         # Declarative desired state
    ├─ migrations/
    │  └─ 20260311000000_admin_audit_logs.sql
    └─ tests/admin_audit_logs.test.sql # pgTAP security checks
 ```
+
+## Declarative schema workflow
+
+Treat `database/supabase/schemas/` as the source of truth for the desired database shape. Edit those
+files instead of making schema changes in Studio or the hosted SQL editor, then generate a migration:
+
+```bash
+pnpm supabase:schema:diff -f describe_the_change
+```
+
+Review the generated file under `database/supabase/migrations/`, paying particular attention to drops,
+renames, locks, and data preservation. The declarative files show the target state; the immutable
+migrations remain the only artifacts applied to shared environments. Data backfills and changes not
+captured by schema diff still require a reviewed, additive migration.
+
+The decision and revisit conditions are recorded in [Declarative database schema](../decisions/declarative-database-schema.md).
 
 ## Local Supabase validation
 

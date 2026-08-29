@@ -10,9 +10,19 @@ database/
 │  └─ admin/
 └─ supabase/
    ├─ config.toml           # Secret-free local Supabase configuration
+   ├─ schemas/              # Declarative desired state; edit these first
    ├─ migrations/           # Ordered, immutable schema migrations
    └─ tests/                # pgTAP database security tests
 ```
+
+For schema changes, edit `supabase/schemas/` and generate a migration for review:
+
+```bash
+pnpm supabase:schema:diff -f add_projects
+```
+
+The schema files describe the desired state; migrations remain the versioned deployment history.
+Review generated SQL for destructive operations and data-preserving transitions before committing it.
 
 Run the local migration checks from the repository root:
 

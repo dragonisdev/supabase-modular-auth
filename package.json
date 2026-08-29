@@ -19,6 +19,7 @@
     "lint:fix": "oxlint --fix",
     "start": "pnpm -r --parallel start",
     "supabase:lint": "supabase db lint --local --schema public --level warning --fail-on error --workdir database",
+    "supabase:schema:diff": "supabase db diff --workdir database",
     "supabase:start": "supabase db start --workdir database --yes",
     "supabase:stop": "supabase stop --workdir database --no-backup",
     "supabase:test": "supabase test db --local --workdir database",

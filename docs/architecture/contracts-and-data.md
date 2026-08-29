@@ -19,7 +19,7 @@ The current tests validate specification and route drift; they do not yet perfor
 
 ## Database boundary
 
-Supabase Auth owns identity tables. The application does not introduce custom password/auth tables. `database/supabase/migrations/` is the canonical ordered migration history; `database/queries/` contains manual, fail-closed operator tools and is never applied automatically. SQL migrations currently cover durable admin audit logging and enforce RLS, grants, and append-only behavior.
+Supabase Auth owns identity tables. The application does not introduce custom password/auth tables. `database/supabase/schemas/` is the declarative source of truth, `database/supabase/migrations/` is the canonical ordered deployment history, and `database/queries/` contains manual, fail-closed operator tools that are never applied automatically. The current schema covers durable admin audit logging and enforces RLS, grants, and append-only behavior.
 
 There is no tenant-owned product table yet. Static tests require future `tenant_id` tables to enable RLS and define tenant-aware policies; real seeded cross-tenant behavior tests must arrive with the first such schema.
 

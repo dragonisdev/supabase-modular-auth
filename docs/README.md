@@ -22,5 +22,6 @@ Start with [setup](setup.md), then use the focused guides below.
 ## Project records
 
 - [Admin role delegation decision](decisions/admin-role-delegation.md)
+- [Declarative database schema decision](decisions/declarative-database-schema.md)
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.
