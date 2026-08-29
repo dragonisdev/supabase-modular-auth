@@ -1,18 +1,15 @@
-# Database
+# Supabase
 
-`database/` is the canonical home for database workflow SQL and the Supabase CLI workdir. The three
-legacy admin-bootstrap examples remain at their documented paths for quick manual reference; they are
-not migrations, seeds, or part of the Supabase CLI workdir.
+`supabase/` is the canonical Supabase CLI project and the home for database workflow SQL.
 
 ```text
-database/
+supabase/
 ├─ queries/                 # Manual operator queries; never applied automatically
 │  └─ admin/
-└─ supabase/
-   ├─ config.toml           # Secret-free local Supabase configuration
-   ├─ schemas/              # Declarative desired state; edit these first
-   ├─ migrations/           # Ordered, immutable schema migrations
-   └─ tests/                # pgTAP database security tests
+├─ config.toml              # Secret-free local Supabase configuration
+├─ schemas/                 # Declarative desired state; edit these first
+├─ migrations/              # Ordered, immutable schema migrations
+└─ tests/                   # pgTAP database security tests
 ```
 
 For schema changes, edit `supabase/schemas/` and generate a migration for review:
@@ -33,7 +30,7 @@ pnpm supabase:test
 pnpm supabase:stop
 ```
 
-`supabase:start` requires a running Docker engine. It starts only the local PostgreSQL service and applies `database/supabase/migrations/` in timestamp order.
+`supabase:start` requires a running Docker engine. It starts only the local PostgreSQL service and applies `supabase/migrations/` in timestamp order.
 
 Migration filenames use `YYYYMMDDHHmmss_description.sql`. Once a migration has been applied to any shared environment, do not rename, edit, or reorder it; add a later migration instead.
 

@@ -1,4 +1,0 @@
--- Replace the placeholder before running this in the Supabase SQL editor.
-SELECT id, email, raw_app_meta_data
-FROM auth.users
-WHERE id = '<USER_UUID>'::uuid;

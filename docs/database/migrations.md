@@ -1,29 +1,28 @@
 # Database migrations and operations
 
-`database/` is the Supabase CLI workdir and the canonical home for database workflow SQL. The three legacy admin-bootstrap examples remain at their documented paths and are not migrations, seeds, or part of the CLI workdir. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
+`supabase/` is the conventional Supabase CLI project and the canonical home for database workflow SQL. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
 
 ```text
-database/
+supabase/
 ├─ queries/admin/                     # Manual, fail-closed operator queries
-└─ supabase/
-   ├─ config.toml                     # Secret-free local project configuration
-   ├─ schemas/
-   │  └─ admin_audit_logs.sql         # Declarative desired state
-   ├─ migrations/
-   │  └─ 20260311000000_admin_audit_logs.sql
-   └─ tests/admin_audit_logs.test.sql # pgTAP security checks
+├─ config.toml                        # Secret-free local project configuration
+├─ schemas/
+│  └─ admin_audit_logs.sql            # Declarative desired state
+├─ migrations/
+│  └─ 20260311000000_admin_audit_logs.sql
+└─ tests/admin_audit_logs.test.sql    # pgTAP security checks
 ```
 
 ## Declarative schema workflow
 
-Treat `database/supabase/schemas/` as the source of truth for the desired database shape. Edit those
+Treat `supabase/schemas/` as the source of truth for the desired database shape. Edit those
 files instead of making schema changes in Studio or the hosted SQL editor, then generate a migration:
 
 ```bash
 pnpm supabase:schema:diff -f describe_the_change
 ```
 
-Review the generated file under `database/supabase/migrations/`, paying particular attention to drops,
+Review the generated file under `supabase/migrations/`, paying particular attention to drops,
 renames, locks, and data preservation. The declarative files show the target state; the immutable
 migrations remain the only artifacts applied to shared environments. Data backfills and changes not
 captured by schema diff still require a reviewed, additive migration.
@@ -66,20 +65,20 @@ logs in to Supabase, links a hosted project, or applies remote migrations.
    pnpm exec supabase login
    ```
 
-3. Link this repository's `database/` workdir to the intended hosted project:
+3. Link this repository's Supabase project to the intended hosted project:
 
    ```bash
-   pnpm exec supabase link --project-ref <project-ref> --workdir database
+   pnpm exec supabase link --project-ref <project-ref>
    ```
 
-   The local link metadata is stored under the ignored `database/supabase/.temp/` directory. Linking
+   The local link metadata is stored under the ignored `supabase/.temp/` directory. Linking
    does not apply migrations.
 
 4. Inspect local and remote migration history, then preview the pending remote changes:
 
    ```bash
-   pnpm exec supabase migration list --workdir database
-   pnpm exec supabase db push --dry-run --workdir database
+   pnpm exec supabase migration list
+   pnpm exec supabase db push --dry-run
    ```
 
    For a new project, the dry run should contain only the reviewed repository migrations. If the
@@ -90,7 +89,7 @@ logs in to Supabase, links a hosted project, or applies remote migrations.
 5. Apply the reviewed pending migrations, without seed data:
 
    ```bash
-   pnpm exec supabase db push --workdir database
+   pnpm exec supabase db push
    ```
 
 6. Run `migration list` again and verify that local and hosted histories agree. Confirm that
@@ -114,9 +113,9 @@ is an explicit operator action and is never part of ordinary tests.
 
 ## Manual operator queries
 
-Files under `database/queries/` are not discovered by the Supabase migration runner. Run them only after reviewing and replacing their `null::uuid` sentinel in a temporary copy.
+Files under `supabase/queries/` are not discovered by the Supabase migration runner. Run them only after reviewing and replacing their `null::uuid` sentinel in a temporary copy.
 
-- [`inspect_user_metadata.sql`](../../database/queries/admin/inspect_user_metadata.sql) is read-only and returns no rows by default.
-- [`promote_user_to_admin.sql`](../../database/queries/admin/promote_user_to_admin.sql) fails by default, preserves existing metadata, and rolls back unless exactly one user is updated.
+- [`inspect_user_metadata.sql`](../../supabase/queries/admin/inspect_user_metadata.sql) is read-only and returns no rows by default.
+- [`promote_user_to_admin.sql`](../../supabase/queries/admin/promote_user_to_admin.sql) fails by default, preserves existing metadata, and rolls back unless exactly one user is updated.
 
 Operator queries must contain no live UUIDs, email addresses, access tokens, or environment-specific values. Do not copy them into migrations or seeds.

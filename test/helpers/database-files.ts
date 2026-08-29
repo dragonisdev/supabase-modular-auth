@@ -10,8 +10,8 @@ export interface MigrationFile {
 }
 
 export const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
-export const databaseRoot = resolve(repositoryRoot, "database");
-export const migrationsDirectory = resolve(databaseRoot, "supabase/migrations");
+export const supabaseRoot = resolve(repositoryRoot, "supabase");
+export const migrationsDirectory = resolve(supabaseRoot, "migrations");
 
 export const migrationFiles: MigrationFile[] = readdirSync(migrationsDirectory)
   .filter((file) => file.endsWith(".sql"))

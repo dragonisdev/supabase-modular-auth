@@ -27,7 +27,7 @@ pnpm supabase:test
 pnpm supabase:stop
 ```
 
-The start command applies `database/supabase/migrations/`; lint checks the resulting `public` schema, and the pgTAP suite verifies database privileges and security properties. None of these commands uses a hosted project.
+The start command applies `supabase/migrations/`; lint checks the resulting `public` schema, and the pgTAP suite verifies database privileges and security properties. None of these commands uses a hosted project.
 
 Live Supabase auth is opt-in and creates, verifies, refreshes, then deletes a temporary user. Prefer a local or dedicated test project. Remote projects also require `ALLOW_REMOTE_SUPABASE_TESTS=true`:
 

@@ -155,7 +155,7 @@ For two VMs, place both on a private network, build the frontend with the backen
 
 ## Admin bootstrap
 
-See [Admin access](operations/admin-access.md) for the short operational reference and reusable SQL examples. For the transaction-safe operator query, use [`database/queries/admin/promote_user_to_admin.sql`](../database/queries/admin/promote_user_to_admin.sql): replace its `null::uuid` sentinel in a temporary copy, then run it once in the Supabase SQL editor. The query fails unless exactly one user changes.
+See [Admin access](operations/admin-access.md) for the short operational reference and reusable SQL examples. For the transaction-safe operator query, use [`supabase/queries/admin/promote_user_to_admin.sql`](../supabase/queries/admin/promote_user_to_admin.sql): replace its `null::uuid` sentinel in a temporary copy, then run it once in the Supabase SQL editor. The query fails unless exactly one user changes.
 
 Never commit a real user UUID, and never auto-promote users through seed data.
 

@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { databaseRoot, repositoryRoot } from "../helpers/database-files.js";
+import { repositoryRoot, supabaseRoot } from "../helpers/database-files.js";
 
 const ignoredDirectories = new Set([
   ".git",
@@ -12,12 +12,6 @@ const ignoredDirectories = new Set([
   "coverage",
   "dist",
   "node_modules",
-]);
-
-const legacyAdminReferenceSqlFiles = new Set([
-  "backend/supabase/example_update_user_admin.sql",
-  "check_metadata.sql",
-  "update_admin.sql",
 ]);
 
 const collectSqlFiles = (directory: string): string[] =>
@@ -35,25 +29,21 @@ const repositorySqlFiles = collectSqlFiles(repositoryRoot).map((path) =>
   relative(repositoryRoot, path).replaceAll("\\", "/"),
 );
 
-const readDatabaseFile = (path: string): string =>
-  readFileSync(resolve(databaseRoot, path), "utf8");
+const readSupabaseFile = (path: string): string =>
+  readFileSync(resolve(supabaseRoot, path), "utf8");
 
 describe("database layout contract", () => {
-  it("keeps database workflow SQL in the canonical database tree", () => {
+  it("keeps database workflow SQL in the canonical Supabase tree", () => {
     expect(repositorySqlFiles).toEqual(
       expect.arrayContaining([
-        "database/queries/admin/inspect_user_metadata.sql",
-        "database/queries/admin/promote_user_to_admin.sql",
-        "database/supabase/migrations/20260311000000_admin_audit_logs.sql",
-        "database/supabase/schemas/admin_audit_logs.sql",
-        "database/supabase/tests/admin_audit_logs.test.sql",
+        "supabase/queries/admin/inspect_user_metadata.sql",
+        "supabase/queries/admin/promote_user_to_admin.sql",
+        "supabase/migrations/20260311000000_admin_audit_logs.sql",
+        "supabase/schemas/admin_audit_logs.sql",
+        "supabase/tests/admin_audit_logs.test.sql",
       ]),
     );
-    expect(
-      repositorySqlFiles.every(
-        (path) => path.startsWith("database/") || legacyAdminReferenceSqlFiles.has(path),
-      ),
-    ).toBe(true);
+    expect(repositorySqlFiles.every((path) => path.startsWith("supabase/"))).toBe(true);
   });
 
   it("keeps admin operator queries free of live identifiers", () => {
@@ -61,14 +51,14 @@ describe("database layout contract", () => {
       "queries/admin/inspect_user_metadata.sql",
       "queries/admin/promote_user_to_admin.sql",
     ]) {
-      expect(readDatabaseFile(path)).not.toMatch(
+      expect(readSupabaseFile(path)).not.toMatch(
         /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i,
       );
     }
   });
 
   it("makes the admin promotion query fail closed", () => {
-    const query = readDatabaseFile("queries/admin/promote_user_to_admin.sql").toLowerCase();
+    const query = readSupabaseFile("queries/admin/promote_user_to_admin.sql").toLowerCase();
 
     expect(query).toContain("target_user_id uuid := null::uuid");
     expect(query).toContain("coalesce(raw_app_meta_data, '{}'::jsonb)");
@@ -79,7 +69,7 @@ describe("database layout contract", () => {
   });
 
   it("keeps local Supabase configuration aligned with application auth", () => {
-    const config = readDatabaseFile("supabase/config.toml");
+    const config = readSupabaseFile("config.toml");
 
     expect(config).toContain('project_id = "supabase-saas-starter"');
     expect(config).toContain('schema_paths = ["./schemas/*.sql"]');
@@ -89,7 +79,7 @@ describe("database layout contract", () => {
   });
 
   it("declares the current audit-log security contract as desired state", () => {
-    const schema = readDatabaseFile("supabase/schemas/admin_audit_logs.sql").toLowerCase();
+    const schema = readSupabaseFile("schemas/admin_audit_logs.sql").toLowerCase();
 
     expect(schema).toContain("create table public.admin_audit_logs");
     expect(schema).toContain("enable row level security");
