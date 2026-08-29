@@ -51,6 +51,56 @@ pnpm test:database
 
 Set both `TEST_DATABASE_URL` and `ALLOW_DATABASE_CLUSTER_MUTATIONS=true` to include behavior tests. The explicit opt-in is required because the runner creates and drops a random disposable database and may temporarily create missing Supabase-compatible cluster roles. It never alters an existing role and removes roles it created, but still requires a local or otherwise dedicated cluster whose login has `CREATEDB`. Never point it at a shared or production cluster.
 
+## Link and initialize a hosted Supabase project
+
+Do this only after the local migration, lint, and pgTAP checks pass. Linking and pushing are explicit
+operator actions: the default CI workflow validates against disposable local infrastructure and never
+logs in to Supabase, links a hosted project, or applies remote migrations.
+
+1. Confirm the target Supabase organization, project name, environment, and project reference. Use a
+   separate project for each environment.
+2. Authenticate the repository-pinned CLI. Enter the personal access token at the prompt; never put it
+   in a command, environment example, log, or committed file:
+
+   ```bash
+   pnpm exec supabase login
+   ```
+
+3. Link this repository's `database/` workdir to the intended hosted project:
+
+   ```bash
+   pnpm exec supabase link --project-ref <project-ref> --workdir database
+   ```
+
+   The local link metadata is stored under the ignored `database/supabase/.temp/` directory. Linking
+   does not apply migrations.
+
+4. Inspect local and remote migration history, then preview the pending remote changes:
+
+   ```bash
+   pnpm exec supabase migration list --workdir database
+   pnpm exec supabase db push --dry-run --workdir database
+   ```
+
+   For a new project, the dry run should contain only the reviewed repository migrations. If the
+   project already contains application-owned schema or its migration history differs, stop and
+   reconcile it deliberately. Do not use `migration repair`, `db pull`, or `--include-all` as an
+   automatic fix.
+
+5. Apply the reviewed pending migrations, without seed data:
+
+   ```bash
+   pnpm exec supabase db push --workdir database
+   ```
+
+6. Run `migration list` again and verify that local and hosted histories agree. Confirm that
+   `public.admin_audit_logs` exists, then exercise the application verification checklist in
+   [Setup](../setup.md#verification-checklist).
+
+Only one operator or release job should push migrations to a given project at a time. For later
+releases, apply backward-compatible migrations before deploying code that requires them. Never run a
+database reset against a shared or production project.
+
 ## Migration rules
 
 - Use `YYYYMMDDHHmmss_description.sql`; the 14-digit prefix is the migration identity.
@@ -59,7 +109,8 @@ Set both `TEST_DATABASE_URL` and `ALLOW_DATABASE_CLUSTER_MUTATIONS=true` to incl
 - Add seeded two-tenant behavioral isolation tests with the first real tenant-owned schema. The starter intentionally has no fictional tenant table today.
 - Never use a seed or migration to promote an administrator.
 
-For a fresh hosted project, review the pending files before using the CLI's link and push workflow. Linking a project, applying a remote migration, repairing migration history, or resetting a database is an explicit operator action and is never part of ordinary tests.
+Linking a project, applying a remote migration, repairing migration history, or resetting a database
+is an explicit operator action and is never part of ordinary tests.
 
 ## Manual operator queries
 

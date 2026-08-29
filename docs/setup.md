@@ -26,7 +26,7 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
    - `https://app.example.com/auth/verify`
    - `https://app.example.com/reset-password`
 5. Configure custom SMTP before production. Supabase's default mail service is intended for evaluation, not production delivery.
-6. Apply the repository migrations described in [Database migrations](database/migrations.md).
+6. Follow [Link and initialize a hosted Supabase project](database/migrations.md#link-and-initialize-a-hosted-supabase-project) to inspect and apply the repository migrations before deploying application code that depends on them.
 
 If Google OAuth is enabled, configure the provider in Supabase and use Supabase's provider callback URL in Google Cloud. The application callback remains the frontend-origin `/auth/google/callback` route.
 
