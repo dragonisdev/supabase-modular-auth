@@ -1,6 +1,8 @@
 # Database
 
-`database/` is the canonical home for every tracked SQL file and the Supabase CLI workdir.
+`database/` is the canonical home for database workflow SQL and the Supabase CLI workdir. The three
+legacy admin-bootstrap examples remain at their documented paths for quick manual reference; they are
+not migrations, seeds, or part of the Supabase CLI workdir.
 
 ```text
 database/

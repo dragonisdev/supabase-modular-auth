@@ -1,6 +1,6 @@
 # Database migrations and operations
 
-`database/` is the Supabase CLI workdir and the only tracked SQL root. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
+`database/` is the Supabase CLI workdir and the canonical home for database workflow SQL. The three legacy admin-bootstrap examples remain at their documented paths and are not migrations, seeds, or part of the CLI workdir. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
 
 ```text
 database/

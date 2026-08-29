@@ -14,6 +14,12 @@ const ignoredDirectories = new Set([
   "node_modules",
 ]);
 
+const legacyAdminReferenceSqlFiles = new Set([
+  "backend/supabase/example_update_user_admin.sql",
+  "check_metadata.sql",
+  "update_admin.sql",
+]);
+
 const collectSqlFiles = (directory: string): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = resolve(directory, entry.name);
@@ -33,7 +39,7 @@ const readDatabaseFile = (path: string): string =>
   readFileSync(resolve(databaseRoot, path), "utf8");
 
 describe("database layout contract", () => {
-  it("keeps every repository SQL file in the canonical database tree", () => {
+  it("keeps database workflow SQL in the canonical database tree", () => {
     expect(repositorySqlFiles).toEqual(
       expect.arrayContaining([
         "database/queries/admin/inspect_user_metadata.sql",
@@ -42,7 +48,11 @@ describe("database layout contract", () => {
         "database/supabase/tests/admin_audit_logs.test.sql",
       ]),
     );
-    expect(repositorySqlFiles.every((path) => path.startsWith("database/"))).toBe(true);
+    expect(
+      repositorySqlFiles.every(
+        (path) => path.startsWith("database/") || legacyAdminReferenceSqlFiles.has(path),
+      ),
+    ).toBe(true);
   });
 
   it("keeps admin operator queries free of live identifiers", () => {
