@@ -33,7 +33,7 @@ Create cohesive, production-usable interfaces without changing the repository's 
 
 ## Work and verify
 
-1. Read the existing route, shared components, API helper, shared schemas, and relevant [frontend architecture](../../architecture/frontend.md) before changing a flow.
+1. Read the existing route, shared components, API helper, shared schemas, and relevant [frontend architecture](../../../docs/architecture/frontend.md) before changing a flow.
 2. Implement the smallest coherent interface change, preserving existing route and component conventions.
 3. Run at minimum:
 

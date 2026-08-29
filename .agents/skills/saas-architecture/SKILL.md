@@ -24,7 +24,7 @@ Do not use it for isolated UI copy, styling, mechanical cleanup, or a single-pac
 
 ## Establish current truth
 
-Read the relevant parts of [`AGENTS.md`](../../../AGENTS.md), the [architecture overview](../../architecture/overview.md), and the actual implementation before designing. Open focused architecture, contract, migration, testing, and decision docs only when relevant.
+Read the relevant parts of [`AGENTS.md`](../../../AGENTS.md), the [architecture overview](../../../docs/architecture/overview.md), and the actual implementation before designing. Open focused architecture, contract, migration, testing, and decision docs only when relevant.
 
 State the current capability, concrete gap, and any assumption that would materially change the design. Do not infer product requirements from generic SaaS conventions. User/admin roles are authorization attributes, not evidence of tenant membership or tenant-owned data. This starter does not yet have a substantive tenancy model.
 
