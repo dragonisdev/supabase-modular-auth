@@ -1,5 +1,0 @@
--- Replace the placeholder before running this in the Supabase SQL editor.
-UPDATE auth.users
-SET raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
-  || jsonb_build_object('role', 'admin', 'is_admin', true)
-WHERE id = '<USER_UUID>'::uuid;

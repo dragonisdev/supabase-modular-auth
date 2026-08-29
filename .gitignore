@@ -26,6 +26,7 @@ Thumbs.db
 
 # Project specific
 node_modules/
+.pnpm-store/
 dist/
 build/
 *.tsbuildinfo

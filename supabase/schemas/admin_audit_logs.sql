@@ -1,9 +1,7 @@
--- Persistent admin audit log table for backend moderation/admin events.
--- Apply this script in Supabase SQL Editor.
+-- Desired state for durable, service-role-only admin audit logging.
+-- Edit this file first, then generate and review a migration with `pnpm supabase:schema:diff --name <name>`.
 
-create extension if not exists pgcrypto;
-
-create table if not exists public.admin_audit_logs (
+create table public.admin_audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_user_id uuid not null,
   actor_email text,
@@ -19,25 +17,25 @@ create table if not exists public.admin_audit_logs (
   created_at timestamptz not null default now()
 );
 
-create index if not exists admin_audit_logs_created_at_idx
+create index admin_audit_logs_created_at_idx
   on public.admin_audit_logs (created_at desc);
 
-create index if not exists admin_audit_logs_action_created_at_idx
+create index admin_audit_logs_action_created_at_idx
   on public.admin_audit_logs (action, created_at desc);
 
-create index if not exists admin_audit_logs_actor_created_at_idx
+create index admin_audit_logs_actor_created_at_idx
   on public.admin_audit_logs (actor_user_id, created_at desc);
 
-create index if not exists admin_audit_logs_target_created_at_idx
+create index admin_audit_logs_target_created_at_idx
   on public.admin_audit_logs (target_user_id, created_at desc);
 
 alter table public.admin_audit_logs enable row level security;
 
--- No anon/authenticated access; backend service role only.
-revoke all on public.admin_audit_logs from public, anon, authenticated;
+-- Browser roles receive no audit-log privileges; only the backend service role can read and append.
+revoke all on public.admin_audit_logs from public, anon, authenticated, service_role;
 grant select, insert on public.admin_audit_logs to service_role;
 
-create or replace function public.prevent_admin_audit_logs_mutation()
+create function public.prevent_admin_audit_logs_mutation()
 returns trigger
 language plpgsql
 as $$
@@ -56,12 +54,13 @@ begin
 end;
 $$;
 
-drop trigger if exists admin_audit_logs_prevent_mutation on public.admin_audit_logs;
+revoke all on function public.prevent_admin_audit_logs_mutation() from public, anon, authenticated;
+
 create trigger admin_audit_logs_prevent_mutation
 before update or delete on public.admin_audit_logs
 for each row execute function public.prevent_admin_audit_logs_mutation();
 
-create or replace function public.admin_purge_audit_logs(p_retention_days integer default 180)
+create function public.admin_purge_audit_logs(p_retention_days integer default 180)
 returns integer
 language plpgsql
 security definer
@@ -82,11 +81,3 @@ $$;
 
 revoke all on function public.admin_purge_audit_logs(integer) from public, anon, authenticated;
 grant execute on function public.admin_purge_audit_logs(integer) to service_role;
-
--- ENABLE LATER
--- Schedule purge of old audit logs (older than 180 days) every 6 hours, requires pg_cron extension.
--- select cron.schedule(
---   'admin-audit-retention',
---   '0 */6 * * *',
---   $$select public.admin_purge_audit_logs(180);$$
--- );

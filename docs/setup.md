@@ -26,7 +26,7 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
    - `https://app.example.com/auth/verify`
    - `https://app.example.com/reset-password`
 5. Configure custom SMTP before production. Supabase's default mail service is intended for evaluation, not production delivery.
-6. Apply the repository migrations described in [Database migrations](database/migrations.md).
+6. Follow [Link and initialize a hosted Supabase project](database/migrations.md#link-and-initialize-a-hosted-supabase-project) to inspect and apply the repository migrations before deploying application code that depends on them.
 
 If Google OAuth is enabled, configure the provider in Supabase and use Supabase's provider callback URL in Google Cloud. The application callback remains the frontend-origin `/auth/google/callback` route.
 
@@ -85,7 +85,7 @@ pnpm compose:watch
 
 Changes under `backend/src`, `frontend/app`, `frontend/components`, and `frontend/lib` are synchronized. Rebuild after changing dependencies, shared types, or container configuration.
 
-Use a hosted/dedicated Supabase project, or add the official Supabase CLI workflow later. A plain PostgreSQL container is not a substitute for Supabase Auth, PostgREST, and its supporting services.
+The application Compose stack does not include Supabase. For a local database-only Supabase environment, use the pinned CLI workflow in [Database migrations](database/migrations.md). A plain PostgreSQL container is not a substitute for Supabase Auth, PostgREST, and its supporting services.
 
 ## Railway deployment
 
@@ -155,18 +155,9 @@ For two VMs, place both on a private network, build the frontend with the backen
 
 ## Admin bootstrap
 
-See [Admin access](operations/admin-access.md) for the short operational reference and reusable SQL examples.
+See [Admin access](operations/admin-access.md) for the short operational reference and reusable SQL examples. For the transaction-safe operator query, use [`supabase/queries/admin/promote_user_to_admin.sql`](../supabase/queries/admin/promote_user_to_admin.sql): replace its `null::uuid` sentinel in a temporary copy, then run it once in the Supabase SQL editor. The query fails unless exactly one user changes.
 
-Register and confirm the first account, copy its UUID from Supabase Authentication > Users, and run this once in the Supabase SQL editor after replacing the placeholder:
-
-```sql
-update auth.users
-set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
-  || jsonb_build_object('role', 'admin', 'is_admin', true)
-where id = '<USER_UUID>'::uuid;
-```
-
-Confirm exactly one row changed. Never commit a real user UUID, and never auto-promote users through seed data.
+Never commit a real user UUID, and never auto-promote users through seed data.
 
 The audit-log migration must be present before treating the admin audit feed as durable. Without it, the current service can fall back to process memory.
 

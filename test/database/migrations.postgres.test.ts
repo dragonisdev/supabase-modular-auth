@@ -1,24 +1,35 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const databaseUrl = process.env.TEST_DATABASE_URL;
-const describeWithDatabase = databaseUrl ? describe : describe.skip;
+import { migrationFiles } from "../helpers/database-files.js";
 
-const migrationFiles = readdirSync(resolve("backend/supabase/migrations"))
-  .filter((file) => file.endsWith(".sql"))
-  .toSorted();
+const databaseUrl = process.env.TEST_DATABASE_URL;
+const allowClusterMutations = process.env.ALLOW_DATABASE_CLUSTER_MUTATIONS === "true";
+const describeWithDatabase = databaseUrl && allowClusterMutations ? describe : describe.skip;
+const requiredDatabaseRoles = ["anon", "authenticated", "service_role"] as const;
 
 describeWithDatabase("Supabase migrations on PostgreSQL", () => {
+  const testDatabaseName = `codex_test_${randomUUID().replaceAll("-", "")}`;
+  let adminClient: Client;
+  let adminConnected = false;
   let client: Client;
+  let createdRoles: string[] = [];
+  let databaseCreated = false;
 
   beforeAll(async () => {
-    client = new Client({ connectionString: databaseUrl });
-    await client.connect();
+    adminClient = new Client({ connectionString: databaseUrl });
+    await adminClient.connect();
+    adminConnected = true;
 
-    await client.query(`
+    const existingRoles = await adminClient.query<{ rolname: string }>(
+      "select rolname from pg_roles where rolname = any($1::text[])",
+      [requiredDatabaseRoles],
+    );
+    const existingRoleNames = new Set(existingRoles.rows.map((role) => role.rolname));
+    createdRoles = requiredDatabaseRoles.filter((role) => !existingRoleNames.has(role));
+
+    await adminClient.query(`
       do $$
       begin
         if not exists (select 1 from pg_roles where rolname = 'anon') then
@@ -33,21 +44,45 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
       end
       $$;
     `);
-    await client.query("alter role service_role bypassrls");
+    await adminClient.query(`create database "${testDatabaseName}"`);
+    databaseCreated = true;
 
-    await migrationFiles.reduce(async (previousMigration, file) => {
+    const disposableDatabaseUrl = new URL(databaseUrl as string);
+    disposableDatabaseUrl.pathname = `/${testDatabaseName}`;
+
+    client = new Client({ connectionString: disposableDatabaseUrl.toString() });
+    await client.connect();
+
+    await migrationFiles.reduce(async (previousMigration, migration) => {
       await previousMigration;
-      const sql = readFileSync(resolve("backend/supabase/migrations", file), "utf8");
-      await client.query(sql);
-      await client.query(sql);
+      await client.query(migration.sql);
     }, Promise.resolve());
   });
 
   afterAll(async () => {
     await client?.end();
+
+    if (!adminConnected) {
+      return;
+    }
+
+    if (databaseCreated) {
+      await adminClient.query(
+        "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
+        [testDatabaseName],
+      );
+      await adminClient.query(`drop database if exists "${testDatabaseName}"`);
+    }
+
+    await createdRoles.toReversed().reduce(async (previousRole, role) => {
+      await previousRole;
+      await adminClient.query(`drop role if exists "${role}"`);
+    }, Promise.resolve());
+
+    await adminClient.end();
   });
 
-  it("applies every migration idempotently", async () => {
+  it("applies every migration to a fresh database", async () => {
     const result = await client.query<{ table_name: string }>(`
       select table_name
       from information_schema.tables

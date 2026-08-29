@@ -20,6 +20,7 @@
 **/*.tsbuildinfo
 
 coverage
+supabase
 logs
 *.log
 

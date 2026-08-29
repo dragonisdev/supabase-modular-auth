@@ -23,6 +23,7 @@ Then open `http://localhost:3001`. A Docker-based development path is documented
 - `backend/` — Express auth/admin API
 - `types/` — shared Zod and generated OpenAPI types
 - `docs/` — centralized guides and canonical API specification
+- `supabase/` — Supabase configuration, migrations, pgTAP tests, and manual operator queries
 - `test/` — unit, integration, contract, database, and opt-in live tests
 
 ## Documentation
