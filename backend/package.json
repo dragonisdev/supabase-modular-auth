@@ -14,7 +14,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "dev": "node --watch --watch-preserve-output --import tsx src/index.ts",
     "start": "node dist/index.js",
     "type-check": "tsgo --noEmit"
   },
