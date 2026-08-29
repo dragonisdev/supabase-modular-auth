@@ -22,6 +22,5 @@ Start with [setup](setup.md), then use the focused guides below.
 ## Project records
 
 - [Admin role delegation decision](decisions/admin-role-delegation.md)
-- `docs/skills/` is reserved for separately reviewed, repository-specific Markdown skills.
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.
