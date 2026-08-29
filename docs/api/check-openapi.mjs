@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import openapiTS, { astToString, COMMENT_HEADER } from "openapi-typescript";
 
-const specificationUrl = new URL("../openapi/openapi.yaml", import.meta.url);
-const generatedTypesUrl = new URL("../types/src/generated/openapi.ts", import.meta.url);
+const specificationUrl = new URL("./openapi.yaml", import.meta.url);
+const generatedTypesUrl = new URL("../../types/src/generated/openapi.ts", import.meta.url);
 
 const syntaxTree = await openapiTS(specificationUrl);
 const expected = `${COMMENT_HEADER}${astToString(syntaxTree)}`;

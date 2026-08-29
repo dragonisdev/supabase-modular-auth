@@ -1,0 +1,90 @@
+name: supabase-saas-starter
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: development
+    command: ["pnpm", "--filter", "@supabase-modular-auth/backend", "dev"]
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      BACKEND_URL: http://localhost:3001
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: lax
+      CSRF_COOKIE_SAME_SITE: strict
+      FRONTEND_URL: http://localhost:3001
+      NODE_ENV: development
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    init: true
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/src
+          target: /workspace/backend/src
+        - action: rebuild
+          path: ./backend/package.json
+        - action: rebuild
+          path: ./types
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: development
+    command: ["pnpm", "--filter", "@supabase-modular-auth/frontend", "dev"]
+    environment:
+      FRONTEND_PROXY_TARGET: http://backend:3000
+      NEXT_PUBLIC_API_BASE_URL: ""
+      NODE_ENV: development
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      backend:
+        condition: service_healthy
+    init: true
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/app
+          target: /workspace/frontend/app
+        - action: sync
+          path: ./frontend/components
+          target: /workspace/frontend/components
+        - action: sync
+          path: ./frontend/lib
+          target: /workspace/frontend/lib
+        - action: rebuild
+          path: ./frontend/package.json
+        - action: rebuild
+          path: ./frontend/next.config.ts
+        - action: rebuild
+          path: ./types

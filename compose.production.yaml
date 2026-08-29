@@ -1,0 +1,69 @@
+name: supabase-saas-starter
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      COOKIE_SAME_SITE: lax
+      COOKIE_SECURE: "true"
+      CSRF_COOKIE_SAME_SITE: strict
+      CSRF_COOKIE_SECURE: "true"
+      NODE_ENV: production
+      PORT: "3000"
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        FRONTEND_PROXY_TARGET: http://backend:3000
+        NEXT_PUBLIC_API_BASE_URL: ""
+    environment:
+      FRONTEND_PROXY_TARGET: http://backend:3000
+      NEXT_PUBLIC_API_BASE_URL: ""
+      NODE_ENV: production
+      PORT: "3001"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3001}:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      backend:
+        condition: service_healthy
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
