@@ -14,7 +14,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --watch src --watch ../types/dist --ext ts,js,json --exec \"node --import tsx src/index.ts\"",
+    "dev": "nodemon --watch src --watch ../types/dist --ext ts,js,json --exec tsx src/index.ts",
     "start": "node dist/index.js",
     "type-check": "tsgo --noEmit"
   },
