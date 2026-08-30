@@ -88,6 +88,7 @@ keep `AGENTS.md` at the repository root for discovery.
 - Auth limiter (default 5/15min).
 - Sensitive limiter for reset/forgot endpoints (half of auth limit, min 3).
 - Production rate-limit counters use Redis and fail closed if the store is unavailable; development/test may deliberately use process memory.
+- Production startup bounds initial Redis retries before listening; after a successful connection, Redis reconnects with capped exponential backoff while affected requests fail closed.
 - **Lockout** remains in-memory with exponential backoff; move it to shared storage before multi-instance production.
 
 ### OAuth state storage
