@@ -7,6 +7,8 @@ import * as SecurityLogger from "../utils/logger.js";
 
 type RedisClient = ReturnType<typeof createClient>;
 
+const MAX_RECONNECT_ATTEMPTS = 3;
+
 export interface RateLimitStoreOptions {
   connectTimeoutMs: number;
   keyPrefix: string;
@@ -25,13 +27,24 @@ export class RateLimitStoreService {
       return;
     }
 
+    let hasConnected = false;
     this.client = createClient({
       url: options.redisUrl,
       disableOfflineQueue: true,
       socket: {
         connectTimeout: options.connectTimeoutMs,
-        reconnectStrategy: (retries) => Math.min(100 * 2 ** Math.min(retries, 5), 3000),
+        reconnectStrategy: (retries) => {
+          if (!hasConnected && retries >= MAX_RECONNECT_ATTEMPTS) {
+            return new Error("Redis rate-limit store reconnect limit reached");
+          }
+
+          return Math.min(100 * 2 ** Math.min(retries, 5), 3000);
+        },
       },
+    });
+
+    this.client.on("ready", () => {
+      hasConnected = true;
     });
 
     this.client.on("error", (error: Error) => {
@@ -66,7 +79,9 @@ export class RateLimitStoreService {
       await this.client.ping();
       console.log("Rate limiting: shared Redis store connected");
     } catch {
-      this.client.destroy();
+      if (this.client.isOpen) {
+        this.client.destroy();
+      }
       throw new ServiceUnavailableError("Rate limiting service failed to initialize");
     }
   }
