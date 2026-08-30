@@ -57,6 +57,7 @@
   "pnpm": {
     "overrides": {
       "@tailwindcss/postcss>postcss": "8.5.26",
+      "path-to-regexp": "8.4.0",
       "qs": "6.15.2"
     }
   }
