@@ -40,7 +40,18 @@ COOKIE_MAX_AGE_DAYS=7
 
 Set `TRUST_PROXY` from the forwarding entries Express actually receives, not from the number of physical proxies. The checked-in Next.js rewrite path starts at one represented trusted hop because Next.js is the immediate peer and preserves the sanitized client forwarding value. Verify this in each environment because client IP identity drives rate limiting, lockout, and audit context.
 
-`REDIS_URL` accepts `redis://` and `rediss://`. It may contain a username and password and is therefore a secret. Production refuses to start without it or when the initial connection fails. Redis command failures do not bypass limits: affected requests return a normalized `503` response. When no URL is present in development or tests, the limiter deliberately uses process memory and is not suitable for multiple backend processes.
+`REDIS_URL` accepts `redis://` and `rediss://`. It may contain a username and password and is therefore a secret. `REDIS_CONNECT_TIMEOUT_MS` applies to each socket attempt. Before the first successful connection, startup allows at most four attempts (the initial attempt plus three retries) and exits non-zero instead of waiting forever. After Redis has been ready once, the client keeps retrying with exponential backoff capped at three seconds; requests fail closed with a normalized `503` while it reconnects. When no URL is present in development or tests, the limiter deliberately uses process memory and is not suitable for multiple backend processes.
+
+## Rate-limit behavior
+
+| Scope            | Applies to                                                    | Key                        | Limit source                                       |
+| ---------------- | ------------------------------------------------------------- | -------------------------- | -------------------------------------------------- |
+| Global           | Every route except `/health`                                  | Client IP                  | `RATE_LIMIT_*`; production uses `STRICT_*`         |
+| Authentication   | Registration, login, and Google authorization URL             | Client IP                  | `AUTH_RATE_LIMIT_MAX_REQUESTS`                     |
+| Sensitive auth   | Password-reset request and password reset                     | Client IP                  | Half the auth limit, minimum 3                     |
+| Admin read/write | Authenticated admin routes, separated by HTTP read/write mode | Authenticated user ID + IP | Derived from the general and authentication limits |
+
+An authentication or admin request can consume both the global quota and its route-specific quota. Exceeding a quota returns the route's normalized `429` response. In production all of these counters share Redis; if Redis is unavailable, the request returns `503` rather than bypassing a security control.
 
 ## Frontend values
 

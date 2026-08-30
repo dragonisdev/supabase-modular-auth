@@ -16,9 +16,9 @@ The rate-limit path is a security control. Losing the shared store must not sile
 
 ## Decision
 
-Use `rate-limit-redis` with `node-redis`. Each limiter has a distinct key namespace, while all backend instances in an environment share one Redis endpoint. Production requires `REDIS_URL` and verifies the connection with bounded retries before the HTTP server listens. Runtime store errors fail closed and are normalized as service-unavailable responses; development and tests may deliberately omit Redis and use the process-local store.
+Use `rate-limit-redis` with `node-redis`. Each limiter has a distinct key namespace, while all backend instances in an environment share one Redis endpoint. Production requires `REDIS_URL` and verifies the connection with at most four initial attempts before the HTTP server listens. After the first successful connection, the client continues reconnecting with bounded exponential backoff. Runtime store errors fail closed and are normalized as service-unavailable responses; development and tests may deliberately omit Redis and use the process-local store.
 
-The checked-in Compose stacks include an unexposed, internal-network Redis with persistence disabled because losing rate-limit counters on a full stack restart is acceptable. Railway should use its private Redis service. A two-VM topology must use one shared private/managed Redis, not one Redis per application VM.
+The checked-in Compose stacks include an unexposed, internal-network Redis with persistence disabled because losing rate-limit counters on a full stack restart is acceptable. Railway may use its private Redis service or an external managed Redis-compatible TCP service. A two-VM topology must use one shared private/managed Redis, not one Redis per application VM.
 
 ## Security and operational consequences
 
