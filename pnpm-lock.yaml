@@ -101,8 +101,8 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
       uuid:
-        specifier: ^13.0.0
-        version: 13.0.0
+        specifier: ^13.0.1
+        version: 13.0.1
       xss:
         specifier: ^1.0.15
         version: 1.0.15
@@ -2426,8 +2426,8 @@ packages:
   uri-js-replace@1.0.1:
     resolution: {integrity: sha512-W+C9NWNLFOoBI2QWDp4UT9pv65r2w5Cx+3sTYFvtMdDBxkKt1syCqsUdSFAChbEe1uK5TfS04wt/nGwmaeIQ0g==, tarball: https://registry.npmjs.org/uri-js-replace/-/uri-js-replace-1.0.1.tgz}
 
-  uuid@13.0.0:
-    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==, tarball: https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz}
+  uuid@13.0.1:
+    resolution: {integrity: sha512-9ezox2roIft6ExBVTVqibSd5dc5/47Sw/uY6b4SjQUT2TzQ0tltNquWA46y4xPQmdZYqvnio22SgWd41M86+jw==, tarball: https://registry.npmjs.org/uuid/-/uuid-13.0.1.tgz}
     hasBin: true
 
   vary@1.1.2:
@@ -4455,7 +4455,7 @@ snapshots:
 
   uri-js-replace@1.0.1: {}
 
-  uuid@13.0.0: {}
+  uuid@13.0.1: {}
 
   vary@1.1.2: {}
 

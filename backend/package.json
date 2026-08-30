@@ -27,7 +27,7 @@
     "express-rate-limit": "8.6.1",
     "helmet": "^8.1.0",
     "typescript": "catalog:",
-    "uuid": "^13.0.0",
+    "uuid": "^13.0.1",
     "xss": "^1.0.15",
     "zod": "catalog:",
     "zxcvbn": "^4.4.2"
