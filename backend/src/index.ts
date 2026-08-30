@@ -1,7 +1,11 @@
 import App from "./app.js";
 import { rateLimitStoreService } from "./services/rate-limit.service.js";
+import * as SecurityLogger from "./utils/logger.js";
 
 let server: ReturnType<App["listen"]> | undefined;
+
+const normalizeError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error("Unknown lifecycle error");
 
 const bootstrap = async (): Promise<void> => {
   await rateLimitStoreService.connect();
@@ -11,15 +15,33 @@ const bootstrap = async (): Promise<void> => {
 
 const shutdown = async (signal: string): Promise<void> => {
   console.log(`${signal} signal received: closing HTTP server`);
+  let exitCode = 0;
 
-  if (server) {
-    await new Promise<void>((resolve, reject) => {
-      server?.close((error) => (error ? reject(error) : resolve()));
+  try {
+    if (server) {
+      await new Promise<void>((resolve, reject) => {
+        server?.close((error) => (error ? reject(error) : resolve()));
+      });
+    }
+  } catch (error) {
+    exitCode = 1;
+    SecurityLogger.logError(normalizeError(error), undefined, {
+      operation: "http_server_shutdown",
+      signal,
     });
+  } finally {
+    try {
+      await rateLimitStoreService.disconnect();
+    } catch (error) {
+      exitCode = 1;
+      SecurityLogger.logError(normalizeError(error), undefined, {
+        operation: "rate_limit_store_shutdown",
+        signal,
+      });
+    } finally {
+      process.exit(exitCode);
+    }
   }
-
-  await rateLimitStoreService.disconnect();
-  process.exit(0);
 };
 
 // Graceful shutdown
@@ -41,8 +63,19 @@ process.on("uncaughtException", (error: Error) => {
   process.exit(1);
 });
 
-void bootstrap().catch(async () => {
+void bootstrap().catch(async (error: unknown) => {
   console.error("Backend startup failed");
-  await rateLimitStoreService.disconnect();
-  process.exit(1);
+  SecurityLogger.logError(normalizeError(error), undefined, {
+    operation: "backend_startup",
+  });
+
+  try {
+    await rateLimitStoreService.disconnect();
+  } catch (disconnectError) {
+    SecurityLogger.logError(normalizeError(disconnectError), undefined, {
+      operation: "rate_limit_store_startup_cleanup",
+    });
+  } finally {
+    process.exit(1);
+  }
 });

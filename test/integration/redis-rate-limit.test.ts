@@ -1,7 +1,7 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { errorHandler } from "../../backend/src/middleware/error.middleware.ts";
 import { createRateLimiter } from "../../backend/src/middleware/rate-limit.middleware.ts";
@@ -9,6 +9,23 @@ import { RateLimitStoreService } from "../../backend/src/services/rate-limit.ser
 
 const redisUrl = process.env.TEST_REDIS_URL;
 const describeWithRedis = redisUrl ? describe : describe.skip;
+
+describe("Redis rate-limit startup", () => {
+  it("fails after bounded retries when Redis is unavailable", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const service = new RateLimitStoreService({
+      connectTimeoutMs: 50,
+      keyPrefix: "test:rate-limit:unavailable:",
+      redisUrl: "redis://127.0.0.1:1",
+    });
+
+    await expect(service.connect()).rejects.toMatchObject({
+      statusCode: 503,
+      message: "Rate limiting service failed to initialize",
+    });
+    await expect(service.disconnect()).resolves.toBeUndefined();
+  });
+});
 
 describeWithRedis("Redis rate-limit integration", () => {
   const prefix = `test:rate-limit:${randomUUID()}:`;
