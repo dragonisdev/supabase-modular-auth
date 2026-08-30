@@ -56,7 +56,8 @@
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
     "overrides": {
-      "@tailwindcss/postcss>postcss": "8.5.26"
+      "@tailwindcss/postcss>postcss": "8.5.26",
+      "qs": "6.15.2"
     }
   }
 }

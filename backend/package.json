@@ -24,7 +24,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "8.6.1",
     "helmet": "^8.1.0",
     "typescript": "catalog:",
     "uuid": "^13.0.0",
