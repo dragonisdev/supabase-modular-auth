@@ -84,13 +84,6 @@ const envSchema = z.object({
     .optional()
     .default(1 as number | boolean),
   REQUEST_TIMEOUT_MS: z.string().regex(/^\d+$/).transform(Number).optional().default(30000), // 30 seconds
-  SHUTDOWN_TIMEOUT_MS: z
-    .string()
-    .regex(/^\d+$/)
-    .transform(Number)
-    .refine((value) => value > 0, { message: "Must be greater than zero" })
-    .optional()
-    .default(8000),
   MAX_REQUEST_SIZE: z.string().default("10kb"),
 
   // Lockout settings

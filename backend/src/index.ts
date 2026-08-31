@@ -1,8 +1,6 @@
 import App from "./app.js";
-import config from "./config/env.js";
 import { rateLimitStoreService } from "./services/rate-limit.service.js";
 import * as SecurityLogger from "./utils/logger.js";
-import { closeServerWithDeadline } from "./utils/server-shutdown.js";
 
 let server: ReturnType<App["listen"]> | undefined;
 
@@ -21,7 +19,9 @@ const shutdown = async (signal: string): Promise<void> => {
 
   try {
     if (server) {
-      await closeServerWithDeadline(server, config.SHUTDOWN_TIMEOUT_MS);
+      await new Promise<void>((resolve, reject) => {
+        server?.close((error) => (error ? reject(error) : resolve()));
+      });
     }
   } catch (error) {
     exitCode = 1;
