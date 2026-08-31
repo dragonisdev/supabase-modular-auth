@@ -193,7 +193,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
 - Redis: `REDIS_URL` (required in production), `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`
-- Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
+- Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `SHUTDOWN_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 
 See `backend/.env.example` for the canonical list.
@@ -248,7 +248,7 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - **Request-ID** header is `X-Request-ID` (set in middleware).
 - **Error logs** are JSON; sensitive fields are redacted by logger.
 - **Dark mode is intentionally disabled** in `frontend/app/globals.css` for readability.
-- The backend is strict about payload sizes and timeouts (`MAX_REQUEST_SIZE`, `REQUEST_TIMEOUT_MS`).
+- The backend is strict about payload sizes and timeouts (`MAX_REQUEST_SIZE`, `REQUEST_TIMEOUT_MS`); keep `SHUTDOWN_TIMEOUT_MS` below the deployment platform's termination grace period.
 - There is no tenant-owned product table yet. The migration tests require RLS and a policy for any
   future table containing `tenant_id`; add two-tenant behavioral tests with the first such schema.
 - `supabase/` is the canonical Supabase CLI project and home for database workflow SQL. Edit

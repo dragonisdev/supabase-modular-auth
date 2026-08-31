@@ -25,7 +25,7 @@ Use exact origins with no trailing slash for `FRONTEND_URL` and `BACKEND_URL`, f
 | General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`        | See `backend/.env.example`                                                    |
 | Redis          | `REDIS_URL`, `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`                                | URL is required in production; prefix should be unique per environment        |
 | Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`              | Rate limits use Redis; account lockout remains process-local                  |
-| HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                    | Proxy hops must match the real topology                                       |
+| HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `SHUTDOWN_TIMEOUT_MS`, `MAX_REQUEST_SIZE`             | Proxy hops must match the real topology; shutdown deadline defaults to 8 sec  |
 
 Production startup rejects insecure auth cookies. Recommended same-origin values are:
 
@@ -41,6 +41,8 @@ COOKIE_MAX_AGE_DAYS=7
 Set `TRUST_PROXY` from the forwarding entries Express actually receives, not from the number of physical proxies. The checked-in Next.js rewrite path starts at one represented trusted hop because Next.js is the immediate peer and preserves the sanitized client forwarding value. Verify this in each environment because client IP identity drives rate limiting, lockout, and audit context.
 
 `REDIS_URL` accepts `redis://` and `rediss://`. It may contain a username and password and is therefore a secret. `REDIS_CONNECT_TIMEOUT_MS` applies to each socket attempt. Before the first successful connection, startup allows at most four attempts (the initial attempt plus three retries) and exits non-zero instead of waiting forever. After Redis has been ready once, the client keeps retrying with exponential backoff capped at three seconds; requests fail closed with a normalized `503` while it reconnects. When no URL is present in development or tests, the limiter deliberately uses process memory and is not suitable for multiple backend processes.
+
+`SHUTDOWN_TIMEOUT_MS` bounds how long the backend waits for active HTTP requests after receiving `SIGTERM` or `SIGINT`; idle keep-alive connections are closed immediately. Its default is 8 seconds, which fits Docker Compose's default 10-second stop grace period. Set it lower than the termination grace period configured by the deployment platform so Redis cleanup can still run before the platform kills the process.
 
 ## Rate-limit behavior
 

@@ -29,7 +29,7 @@ middleware -> route -> controller -> service -> Supabase
 
 ## Lifecycle
 
-Before listening for HTTP traffic, the backend verifies the Redis rate-limit store. The initial connection has a bounded number of retries, so a bad endpoint cannot leave deployment startup pending indefinitely. On `SIGTERM` or `SIGINT`, it closes the HTTP server, then attempts Redis cleanup even if closing the server fails; lifecycle failures are recorded through the sanitized logger and produce a non-zero exit status. `/health` remains a lightweight, rate-limit-exempt process liveness check; monitor Redis separately for runtime availability.
+Before listening for HTTP traffic, the backend verifies the Redis rate-limit store. The initial connection has a bounded number of retries, so a bad endpoint cannot leave deployment startup pending indefinitely. On `SIGTERM` or `SIGINT`, it closes idle HTTP connections, then waits only up to `SHUTDOWN_TIMEOUT_MS` for active requests before attempting Redis cleanup. Lifecycle failures are recorded through the sanitized logger and produce a non-zero exit status. `/health` remains a lightweight, rate-limit-exempt process liveness check; monitor Redis separately for runtime availability.
 
 ## State and scaling
 
