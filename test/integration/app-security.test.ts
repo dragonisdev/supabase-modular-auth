@@ -86,6 +86,12 @@ describe("Express security surface", () => {
       .expect(200);
 
     expect(response.body).toEqual({ success: true, message: "Logout successful" });
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"SECURITY_LOGOUT_COMPLETED"'),
+    );
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('"remoteRevocation":"not_attempted"'),
+    );
     const rotatedCsrfCookie = getSetCookies(response.headers).find((cookie) =>
       cookie.startsWith("csrf_token="),
     );
