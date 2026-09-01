@@ -418,7 +418,7 @@ export class AuthController {
       }
 
       if (signOutError) {
-        SecurityLogger.warn("Remote session revocation failed; local logout completed");
+        SecurityLogger.logError(signOutError as Error, req, { operation: "logout" });
       }
 
       // Local logout must always succeed even when remote revocation is unavailable.
