@@ -444,7 +444,7 @@ export class AuthController {
       }
 
       const { email } = validation.data;
-      const supabase = SupabaseService.getClient();
+      const supabase = SupabaseService.createRecoveryClient();
 
       // Request password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
