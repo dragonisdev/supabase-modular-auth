@@ -1,8 +1,11 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../backend/src/app.ts";
 import sessionService from "../../backend/src/services/session.service.ts";
+import SupabaseService from "../../backend/src/services/supabase.service.ts";
 import {
   ACCESS_TOKEN,
   REFRESH_TOKEN,
@@ -88,6 +91,36 @@ describe("Express security surface", () => {
     );
     expect(rotatedCsrfCookie).toBeTruthy();
     expect(getCookiePair(rotatedCsrfCookie!)).not.toBe(cookiePair);
+  });
+
+  it("uses the implicit recovery flow for password reset emails", async () => {
+    const resetPasswordForEmail = vi.fn().mockResolvedValue({ data: {}, error: null });
+    const createRecoveryClient = vi
+      .spyOn(SupabaseService, "createRecoveryClient")
+      .mockReturnValue({ auth: { resetPasswordForEmail } } as unknown as SupabaseClient);
+    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
+    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
+      cookie.startsWith("csrf_token="),
+    );
+    expect(csrfCookie).toBeTruthy();
+
+    const cookiePair = getCookiePair(csrfCookie!);
+    const csrfToken = getCookieValue(cookiePair);
+    const response = await request(app)
+      .post("/auth/forgot-password")
+      .set("Cookie", cookiePair)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email: "user@example.com" })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      success: true,
+      message: "If an account exists with this email, a password reset link has been sent.",
+    });
+    expect(createRecoveryClient).toHaveBeenCalledOnce();
+    expect(resetPasswordForEmail).toHaveBeenCalledWith("user@example.com", {
+      redirectTo: "http://127.0.0.1:3001/reset-password",
+    });
   });
 
   it("returns a normalized JSON 404", async () => {

@@ -16,13 +16,13 @@ class SupabaseService {
 
   private constructor() {}
 
-  private static createAnonClient(): SupabaseClient {
+  private static createAnonClient(flowType: "implicit" | "pkce" = "pkce"): SupabaseClient {
     return createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
         detectSessionInUrl: false,
-        flowType: "pkce",
+        flowType,
       },
     });
   }
@@ -46,6 +46,11 @@ class SupabaseService {
    */
   public static createSessionClient(): SupabaseClient {
     return SupabaseService.createAnonClient();
+  }
+
+  /** Create a request-scoped client for password recovery emails. */
+  public static createRecoveryClient(): SupabaseClient {
+    return SupabaseService.createAnonClient("implicit");
   }
 
   /**
