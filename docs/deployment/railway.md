@@ -49,6 +49,6 @@ The reference namespace must match the actual backend service name. Browser clie
 
 ## Release check
 
-After both services deploy, verify registration, confirmation, login, session rotation, logout (including the `SECURITY_LOGOUT_COMPLETED` event), reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
+After both services deploy, verify registration, confirmation, login, session rotation, logout, reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
 
 Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
