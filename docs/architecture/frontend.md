@@ -29,7 +29,7 @@ Recommended production and local browser requests are same-origin:
 - Protected: `/dashboard`, `/logout`.
 - Admin UI: `/admin`, `/admin/users`, `/admin/audit`.
 
-Supabase reset links can deliver tokens in the URL fragment. The reset page parses the fragment and sends the required access token to Express without persisting it. The verification page only interprets the callback result and redirects the user to login; it does not exchange the fragment with Express.
+Password recovery uses a request-scoped implicit-flow client so the email returns an access token in the URL fragment without relying on process-local PKCE verifier state. The reset page parses the fragment and sends the required access token to Express without persisting it. The verification page only interprets the callback result and redirects the user to login; it does not exchange the fragment with Express.
 
 ## Deployment behavior
 

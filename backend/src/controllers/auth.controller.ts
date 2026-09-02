@@ -381,6 +381,12 @@ export class AuthController {
    * Logout current user
    */
   async logout(req: Request, res: Response): Promise<void> {
+    const finishLogout = (remoteRevocation: "succeeded" | "failed" | "not_attempted"): void => {
+      clearAuthCookies(res);
+      SecurityLogger.logSecurityEvent("LOGOUT_COMPLETED", req, { remoteRevocation });
+      successResponse(res, "Logout successful");
+    };
+
     try {
       const cookies = (req.cookies || {}) as Record<string, string>;
       const accessToken = getAuthTokenFromCookies(cookies);
@@ -422,12 +428,9 @@ export class AuthController {
       }
 
       // Local logout must always succeed even when remote revocation is unavailable.
-      clearAuthCookies(res);
-
-      successResponse(res, "Logout successful");
+      finishLogout(signOutError ? "failed" : tokenToRevoke ? "succeeded" : "not_attempted");
     } catch (_error) {
-      clearAuthCookies(res);
-      successResponse(res, "Logout successful");
+      finishLogout("failed");
     }
   }
 
@@ -444,7 +447,7 @@ export class AuthController {
       }
 
       const { email } = validation.data;
-      const supabase = SupabaseService.getClient();
+      const supabase = SupabaseService.createRecoveryClient();
 
       // Request password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
