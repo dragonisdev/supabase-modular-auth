@@ -14,52 +14,37 @@ const bootstrap = async (): Promise<void> => {
   server = app.listen();
 };
 
-const shutdown = async (signal: string): Promise<void> => {
+const shutdown = (signal: string): void => {
   console.log(`${signal} signal received: closing HTTP server`);
-  let exitCode = 0;
+  if (!server) {
+    process.exit(0);
+    return;
+  }
 
-  try {
-    if (server) {
-      const activeServer = server;
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(
-          () => activeServer.closeAllConnections(),
-          HTTP_SHUTDOWN_TIMEOUT_MS,
-        );
-        activeServer.close((error) => {
-          clearTimeout(timeout);
-          return error ? reject(error) : resolve();
-        });
-      });
-    }
-  } catch (error) {
-    exitCode = 1;
-    SecurityLogger.logError(normalizeError(error), undefined, {
-      operation: "http_server_shutdown",
-      signal,
-    });
-  } finally {
-    try {
-      await rateLimitStoreService.disconnect();
-    } catch (error) {
-      exitCode = 1;
+  const activeServer = server;
+  const timeout = setTimeout(() => activeServer.closeAllConnections(), HTTP_SHUTDOWN_TIMEOUT_MS);
+  activeServer.close((error) => {
+    clearTimeout(timeout);
+    if (error) {
       SecurityLogger.logError(normalizeError(error), undefined, {
-        operation: "rate_limit_store_shutdown",
+        operation: "http_server_shutdown",
         signal,
       });
-    } finally {
-      process.exit(exitCode);
+      process.exit(1);
+      return;
     }
-  }
+
+    process.exit(0);
+  });
 };
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  void shutdown("SIGTERM");
+  shutdown("SIGTERM");
 });
 
 process.on("SIGINT", () => {
-  void shutdown("SIGINT");
+  shutdown("SIGINT");
 });
 
 process.on("unhandledRejection", (reason: Error) => {
