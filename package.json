@@ -58,6 +58,7 @@
     "overrides": {
       "@tailwindcss/postcss>postcss": "8.5.26",
       "express>body-parser": "2.3.0",
+      "fast-uri": "3.1.6",
       "path-to-regexp": "8.4.0",
       "vitest>picomatch": "4.0.7",
       "qs": "6.15.2"
