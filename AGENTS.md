@@ -221,6 +221,7 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - `pnpm test` — run deterministic mocked, contract, and static database tests
 - `pnpm test:type-check` — typecheck the root test suite
 - `pnpm test:coverage` — run the default suite with coverage
+- `pnpm audit --prod` — fail on known production dependency advisories
 - `pnpm api:check` — generate the OpenAPI TypeScript contract in memory and fail on drift
 - `pnpm supabase:schema:check` — fail when the declarative schema and migration history drift
 - `pnpm supabase:schema:diff --name <name>` — generate a migration from the declarative schema
