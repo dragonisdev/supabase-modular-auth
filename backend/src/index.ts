@@ -22,22 +22,13 @@ const shutdown = async (signal: string): Promise<void> => {
     if (server) {
       const activeServer = server;
       await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          SecurityLogger.warn("HTTP shutdown deadline reached; closing active connections", {
-            signal,
-          });
-          activeServer.closeAllConnections();
-          resolve();
-        }, HTTP_SHUTDOWN_TIMEOUT_MS);
-        timeout.unref();
-
+        const timeout = setTimeout(
+          () => activeServer.closeAllConnections(),
+          HTTP_SHUTDOWN_TIMEOUT_MS,
+        );
         activeServer.close((error) => {
           clearTimeout(timeout);
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
+          return error ? reject(error) : resolve();
         });
       });
     }
