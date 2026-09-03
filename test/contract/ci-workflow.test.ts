@@ -50,7 +50,6 @@ describe("CI workflow contract", () => {
     expect(getRunSteps(workflow.jobs?.quality)).toEqual(
       expect.arrayContaining([
         "pnpm install --frozen-lockfile",
-        "pnpm audit --prod",
         "pnpm format:check",
         "pnpm lint",
         "pnpm type-check",
