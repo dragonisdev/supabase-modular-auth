@@ -1,6 +1,24 @@
 name: supabase-saas-starter
 
 services:
+  redis:
+    image: redis:8.10.0-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--loglevel", "warning"]
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - rate-limit
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /data
+
   backend:
     build:
       context: .
@@ -18,6 +36,7 @@ services:
       FRONTEND_URL: http://localhost:3001
       NODE_ENV: development
       PORT: "3000"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -33,6 +52,12 @@ services:
       retries: 10
       start_period: 10s
     init: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - application
+      - rate-limit
     develop:
       watch:
         - action: sync
@@ -71,6 +96,8 @@ services:
       backend:
         condition: service_healthy
     init: true
+    networks:
+      - application
     develop:
       watch:
         - action: sync
@@ -88,3 +115,8 @@ services:
           path: ./frontend/next.config.ts
         - action: rebuild
           path: ./types
+
+networks:
+  application:
+  rate-limit:
+    internal: true

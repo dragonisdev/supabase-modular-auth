@@ -95,6 +95,7 @@ describe("auth cookie helpers", () => {
     vi.stubEnv("COOKIE_SECURE", "true");
     vi.stubEnv("FRONTEND_URL", "https://app.example.com");
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("REDIS_URL", "redis://127.0.0.1:6379");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.resetModules();
 

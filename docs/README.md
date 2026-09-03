@@ -23,5 +23,6 @@ Start with [setup](setup.md), then use the focused guides below.
 
 - [Admin role delegation decision](decisions/admin-role-delegation.md)
 - [Declarative database schema decision](decisions/declarative-database-schema.md)
+- [Redis rate-limiting decision](decisions/0001-redis-rate-limiting.md)
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.

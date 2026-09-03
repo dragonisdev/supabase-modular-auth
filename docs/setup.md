@@ -70,7 +70,7 @@ Open `http://localhost:3001` and verify `http://localhost:3001/health` returns s
 
 ## Docker Compose development
 
-The Compose stack runs the frontend on port 3001 and the backend on port 3000. It reads ignored secrets from `backend/.env`; it does not include Supabase itself.
+The Compose stack runs the frontend on port 3001, the backend on port 3000, and an ephemeral Redis used only for rate-limit counters. Redis has no host port and is isolated on an internal network. The stack reads ignored secrets from `backend/.env`; it does not include Supabase itself.
 
 ```bash
 pnpm compose:check
@@ -97,7 +97,7 @@ Follow [Railway deployment](deployment/railway.md) for exact commands and variab
 - Set the backend to a fixed internal `PORT=3000` and healthcheck `/health`.
 - Set `FRONTEND_PROXY_TARGET` before the frontend build; rewrites are compiled during `next build`.
 - Leave `NEXT_PUBLIC_API_BASE_URL` unset.
-- Keep one backend replica until shared rate limiting and lockout storage are implemented.
+- Keep one backend replica until the remaining process-local lockout, OAuth PKCE, and audit fallback state is moved.
 
 Railway documents [shared monorepo deployment](https://docs.railway.com/deployments/monorepo), [private networking](https://docs.railway.com/networking/private-networking), and [deployment healthchecks](https://docs.railway.com/deployments/healthchecks).
 
@@ -122,6 +122,8 @@ The checked-in `compose.production.yaml` is the provider-neutral baseline. It ex
    COOKIE_MAX_AGE_DAYS=7
    # The checked-in Next.js rewrite path expects one represented trusted hop.
    TRUST_PROXY=1
+   # compose.production.yaml supplies a private Redis default.
+   # Set REDIS_URL in the shell to override it with a managed/private service.
    ```
 
 6. Start the private application stack:
@@ -151,7 +153,7 @@ Docker describes Compose on a [single production server](https://docs.docker.com
 
 AWS documents [EC2 Security Groups](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/creating-security-group.html); DigitalOcean documents its [production-ready Droplet baseline](https://docs.digitalocean.com/products/droplets/getting-started/recommended-droplet-setup/).
 
-For two VMs, place both on a private network, build the frontend with the backend's private origin, and allow the backend port only from the frontend VM. Do not copy the single-host Compose DNS name (`backend`) across hosts.
+For two VMs, point every backend instance at one shared private or managed Redis by setting the same `REDIS_URL` and `REDIS_KEY_PREFIX`; do not run an isolated Redis on each application VM. Use a different prefix for each environment if they share one Redis service. Place both VMs on a private network, build the frontend with the backend's private origin, and allow the backend port only from the frontend VM. Do not copy the single-host Compose DNS names (`backend` or `redis`) across hosts. Rate limits are then coordinated, but the remaining process-local security state below still prevents claiming full multi-replica safety.
 
 ## Admin bootstrap
 
@@ -176,4 +178,4 @@ The audit-log migration must be present before treating the admin audit feed as 
 
 ## Scaling boundary
 
-Run one backend replica for now. Rate-limit counters, account lockout state, OAuth PKCE state, and the audit fallback include process-local storage. Redis-backed coordination and durable reconciliation belong in separate changes before horizontal scaling.
+Run one backend replica for now. Redis shares rate-limit counters, but account lockout state, OAuth PKCE state, and the audit fallback still include process-local storage. Move each remaining boundary to shared or durable storage before horizontal scaling.
