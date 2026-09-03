@@ -57,19 +57,10 @@ process.on("uncaughtException", (error: Error) => {
   process.exit(1);
 });
 
-void bootstrap().catch(async (error: unknown) => {
+void bootstrap().catch((error: unknown) => {
   console.error("Backend startup failed");
   SecurityLogger.logError(normalizeError(error), undefined, {
     operation: "backend_startup",
   });
-
-  try {
-    await rateLimitStoreService.disconnect();
-  } catch (disconnectError) {
-    SecurityLogger.logError(normalizeError(disconnectError), undefined, {
-      operation: "rate_limit_store_startup_cleanup",
-    });
-  } finally {
-    process.exit(1);
-  }
+  process.exit(1);
 });
