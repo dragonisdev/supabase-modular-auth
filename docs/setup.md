@@ -16,6 +16,14 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
 - Docker Engine with the Compose plugin for the container workflow
 - A public domain and HTTPS before production
 
+## Dependency updates
+
+The Dependabot workflow enables automatic squash-merge for Dependabot-authored npm
+patch and minor updates. GitHub branch protection for `main` must require the
+repository's CI jobs and any desired approvals; the workflow only requests
+auto-merge and does not bypass those rules. Major updates, GitHub Actions updates,
+and other ecosystems remain manual.
+
 ## 1. Prepare Supabase
 
 1. Create a Supabase project and record its project URL, publishable/anon key, and service-role key.
