@@ -18,11 +18,22 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
 
 ## Dependency updates
 
-The Dependabot workflow enables automatic squash-merge for Dependabot-authored npm
-patch and minor updates. GitHub branch protection for `main` must require the
-repository's CI jobs and any desired approvals; the workflow only requests
-auto-merge and does not bypass those rules. Major updates, GitHub Actions updates,
-and other ecosystems remain manual.
+The Dependabot workflow requests automatic squash-merge for Dependabot-authored npm
+patch updates and npm security updates. Non-security npm minor and major updates,
+GitHub Actions updates, and other ecosystems remain manual. Auto-merge still waits
+for the repository rules protecting `main`; it does not bypass required checks or
+approvals.
+
+The patch path works with the built-in workflow token. To enable automatic merging
+of security updates whose version change is minor or major, install a GitHub App on
+this repository with `Dependabot alerts: read`, `Contents: write`, and `Pull requests:
+write` permissions, then add its client ID as the `GITHUB_APP_CLIENT_ID` repository
+variable and its private key as the `GITHUB_APP_PRIVATE_KEY` repository secret. If
+that App is not configured, those security PRs remain manual.
+
+The `main` ruleset should require all three CI jobs: `Quality and tests`, `Container
+images`, and `Supabase migration and RLS tests`. A merge queue is intentionally
+deferred until parallel Dependabot PRs become common.
 
 ## 1. Prepare Supabase
 
