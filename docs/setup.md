@@ -153,7 +153,7 @@ Docker describes Compose on a [single production server](https://docs.docker.com
 
 AWS documents [EC2 Security Groups](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/creating-security-group.html); DigitalOcean documents its [production-ready Droplet baseline](https://docs.digitalocean.com/products/droplets/getting-started/recommended-droplet-setup/).
 
-For two VMs, point every backend instance at one shared private or managed Redis by setting the same `REDIS_URL`; do not run an isolated Redis on each application VM. Place both VMs on a private network, build the frontend with the backend's private origin, and allow the backend port only from the frontend VM. Do not copy the single-host Compose DNS names (`backend` or `redis`) across hosts. Rate limits are then coordinated, but the remaining process-local security state below still prevents claiming full multi-replica safety.
+For two VMs, point every backend instance at one shared private or managed Redis by setting the same `REDIS_URL` and `REDIS_KEY_PREFIX`; do not run an isolated Redis on each application VM. Use a different prefix for each environment if they share one Redis service. Place both VMs on a private network, build the frontend with the backend's private origin, and allow the backend port only from the frontend VM. Do not copy the single-host Compose DNS names (`backend` or `redis`) across hosts. Rate limits are then coordinated, but the remaining process-local security state below still prevents claiming full multi-replica safety.
 
 ## Admin bootstrap
 

@@ -3,6 +3,7 @@ import { rateLimitStoreService } from "./services/rate-limit.service.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 let server: ReturnType<App["listen"]> | undefined;
+const HTTP_SHUTDOWN_TIMEOUT_MS = 8_000;
 
 const normalizeError = (error: unknown): Error =>
   error instanceof Error ? error : new Error("Unknown lifecycle error");
@@ -19,8 +20,25 @@ const shutdown = async (signal: string): Promise<void> => {
 
   try {
     if (server) {
+      const activeServer = server;
       await new Promise<void>((resolve, reject) => {
-        server?.close((error) => (error ? reject(error) : resolve()));
+        const timeout = setTimeout(() => {
+          SecurityLogger.warn("HTTP shutdown deadline reached; closing active connections", {
+            signal,
+          });
+          activeServer.closeAllConnections();
+          resolve();
+        }, HTTP_SHUTDOWN_TIMEOUT_MS);
+        timeout.unref();
+
+        activeServer.close((error) => {
+          clearTimeout(timeout);
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
       });
     }
   } catch (error) {
