@@ -3,7 +3,6 @@ import { rateLimitStoreService } from "./services/rate-limit.service.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 let server: ReturnType<App["listen"]> | undefined;
-const HTTP_SHUTDOWN_TIMEOUT_MS = 8_000;
 
 const normalizeError = (error: unknown): Error =>
   error instanceof Error ? error : new Error("Unknown lifecycle error");
@@ -21,10 +20,7 @@ const shutdown = (signal: string): void => {
     return;
   }
 
-  const activeServer = server;
-  const timeout = setTimeout(() => activeServer.closeAllConnections(), HTTP_SHUTDOWN_TIMEOUT_MS);
-  activeServer.close((error) => {
-    clearTimeout(timeout);
+  server.close((error) => {
     if (error) {
       SecurityLogger.logError(normalizeError(error), undefined, {
         operation: "http_server_shutdown",
