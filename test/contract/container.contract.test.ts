@@ -8,10 +8,14 @@ interface ComposeService {
     dockerfile?: string;
   };
   environment?: Record<string, string>;
+  image?: string;
+  networks?: string[];
   ports?: string[];
+  read_only?: boolean;
 }
 
 interface ComposeFile {
+  networks?: Record<string, { internal?: boolean } | null>;
   services?: Record<string, ComposeService>;
 }
 
@@ -56,6 +60,24 @@ describe("container contract", () => {
     expect(production.services?.frontend?.build?.args?.FRONTEND_PROXY_TARGET).toBe(
       "http://backend:3000",
     );
+  });
+
+  it("keeps a digest-pinned Redis private and available to the backend", () => {
+    const expectedImage =
+      "redis:8.10.0-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241";
+
+    for (const compose of [development, production]) {
+      expect(compose.services?.redis?.image).toBe(expectedImage);
+      expect(compose.services?.redis?.ports).toBeUndefined();
+      expect(compose.services?.redis?.read_only).toBe(true);
+      expect(compose.services?.redis?.networks).toEqual(["rate-limit"]);
+      expect(compose.services?.backend?.networks).toContain("rate-limit");
+      expect(compose.services?.frontend?.networks).not.toContain("rate-limit");
+      expect(compose.services?.backend?.environment?.REDIS_URL).toBe(
+        "${REDIS_URL:-redis://redis:6379}",
+      );
+      expect(compose.networks?.["rate-limit"]?.internal).toBe(true);
+    }
   });
 
   it("does not bake environment files into Docker contexts", () => {

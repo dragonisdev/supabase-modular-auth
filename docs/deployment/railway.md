@@ -2,6 +2,15 @@
 
 Deploy two services from the same repository and Railway project. Do not set `/frontend` or `/backend` as an isolated root directory: this shared pnpm monorepo requires `types/`, `pnpm-workspace.yaml`, and the root lockfile.
 
+## Redis service
+
+Production needs one Redis-compatible TCP endpoint shared by every backend instance. The frontend never receives Redis credentials. Choose one of these supported topologies:
+
+- **Railway private Redis:** Add Railway's Redis template and leave its public TCP proxy disabled. Reference the template's private `REDIS_URL` from the backend.
+- **External managed Redis:** Store the provider's normal TCP `rediss://` connection string as the backend's `REDIS_URL`. Do not use a REST endpoint or REST token. Select a provider region near Railway and configure a distinct `REDIS_KEY_PREFIX` for this application and environment.
+
+Both options use the same backend configuration; no application code is deployed to the Redis provider.
+
 ## Backend service
 
 - Build command: `pnpm --filter @supabase-modular-auth/types build && pnpm --filter @supabase-modular-auth/backend build`
@@ -26,6 +35,11 @@ CSRF_COOKIE_SAME_SITE=strict
 CSRF_COOKIE_SECURE=true
 COOKIE_MAX_AGE_DAYS=7
 TRUST_PROXY=1
+# Railway private Redis:
+REDIS_URL=${{Redis.REDIS_URL}}
+# Or an external TLS Redis provider:
+# REDIS_URL=rediss://default:<password>@<host>:6379
+REDIS_KEY_PREFIX=supabase-saas:rate-limit:production:
 ```
 
 Leave `COOKIE_DOMAIN` unset.
@@ -45,10 +59,10 @@ FRONTEND_PROXY_TARGET=http://${{backend.RAILWAY_PRIVATE_DOMAIN}}:3000
 NEXT_PUBLIC_API_BASE_URL=
 ```
 
-The reference namespace must match the actual backend service name. Browser clients cannot resolve `railway.internal`; only the Next.js server uses this value.
+The reference namespace must match the actual Railway service name. Browser clients cannot resolve `railway.internal`; only the Next.js server uses this value.
 
 ## Release check
 
-After both services deploy, verify registration, confirmation, login, session rotation, logout, reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
+After both services deploy, verify the backend logs a successful shared Redis-store connection, then verify registration, confirmation, login, session rotation, logout, reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
 
-Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
+Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [Redis](https://docs.railway.com/databases/redis), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
