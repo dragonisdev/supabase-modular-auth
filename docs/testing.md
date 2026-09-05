@@ -8,6 +8,38 @@ pnpm test:type-check
 pnpm test:coverage
 ```
 
+Prefer tests that fail when a meaningful behavior changes: authorization decisions, token and
+password boundaries, session rotation, cookie security, and error classification. Use table-driven
+cases for related boundaries and share repeated setup. Avoid assertions on exact documentation
+wording, historical file inventories, or implementation source strings when an executable check
+already covers the behavior. Keep API contracts, broken-link checks, and deployment security
+invariants where they protect a separate failure mode.
+
+Run mutation testing to assess those assertions with Node.js 24.11+ or the supported 22.18+ line
+(Stryker's Babel dependency requires these versions):
+
+```bash
+pnpm test:mutation
+pnpm test:mutation --mutate backend/src/services/session.service.ts
+```
+
+Stryker changes production code in a temporary `.stryker-tmp/` copy and runs the relevant Vitest
+tests. The default scope is session resolution, authentication middleware, auth cookies, and backend
+password strength. The mutation Vitest configuration includes only unit tests and mocked Express
+security tests, even when live-test environment variables are set. It does not run Redis,
+PostgreSQL, or live Supabase tests. HTML and JSON reports are written under `coverage/mutation/`;
+`pnpm test:coverage` clears that directory, so run coverage before mutations when retaining both.
+
+Review surviving mutants for missing behavioral assertions or equivalent changes before adding
+tests. A surviving log-message mutation alone is not a reason to freeze prose. The mutation score
+applies only to the four configured files, not the whole repository. Mutation testing is an explicit
+local command; the regular CI coverage gate remains in place.
+
+The command fails below a 75% mutation score. On the initial four-file review, the original suite
+scored 44.29%; boundary and failure-path assertions raised it above 75% without changing production
+code. Keep the floor meaningful as the configured scope grows; do not exclude surviving mutants
+solely to improve the number.
+
 `test/database/migration-policy.test.ts` always checks migration and RLS invariants. Set `TEST_DATABASE_URL` to create a randomly named disposable database, apply each migration once, verify grants, real role behavior, RLS, triggers, and retention, then drop that database:
 
 ```bash

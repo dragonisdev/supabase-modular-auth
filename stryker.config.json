@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "ignorePatterns": [
+    ".pnpm-store",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.env*",
+    "**/*.tsbuildinfo",
+    ".agents/**",
+    ".codex/**",
+    "coverage/**",
+    "supabase/.temp/**"
+  ],
+  "vitest": {
+    "configFile": "vitest.mutation.config.ts"
+  },
+  "mutate": [
+    "backend/src/services/session.service.ts",
+    "backend/src/middleware/auth.middleware.ts",
+    "backend/src/utils/response.ts",
+    "backend/src/validators/password.validator.ts"
+  ],
+  "concurrency": 4,
+  "reporters": ["clear-text", "html", "json"],
+  "htmlReporter": { "fileName": "coverage/mutation/index.html" },
+  "jsonReporter": { "fileName": "coverage/mutation/mutation.json" },
+  "thresholds": { "high": 90, "low": 80, "break": 75 }
+}
