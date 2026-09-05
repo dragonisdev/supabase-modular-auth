@@ -18,22 +18,29 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
 
 ## Dependency updates
 
-The Dependabot workflow requests automatic squash-merge for Dependabot-authored npm
-patch updates and npm security updates. Non-security npm minor and major updates,
-GitHub Actions updates, and other ecosystems remain manual. Auto-merge still waits
-for the repository rules protecting `main`; it does not bypass required checks or
-approvals.
+Dependabot is configured in `.github/dependabot.yml` to check the workspace npm
+manifests and GitHub Actions weekly. The committed `pnpm-lock.yaml` remains the
+source of resolved versions, and CI installs it with `pnpm install --frozen-lockfile`.
 
-The patch path works with the built-in workflow token. To enable automatic merging
-of security updates whose version change is minor or major, install a GitHub App on
-this repository with `Dependabot alerts: read`, `Contents: write`, and `Pull requests:
-write` permissions, then add its client ID as the `GITHUB_APP_CLIENT_ID` repository
-variable and its private key as the `GITHUB_APP_PRIVATE_KEY` repository secret. If
-that App is not configured, those security PRs remain manual.
+The auto-merge workflow is intentionally narrow: after a 1,440-minute wait in the
+`dependabot-cooldown` environment, it can squash-merge only an ordinary npm
+patch update with no open security alert and no reported maintainer changes. Configure
+that environment with the wait timer in repository settings; naming an environment
+alone does not create a delay. A synchronized PR starts a fresh cooldown.
 
-The `main` ruleset should require all three CI jobs: `Quality and tests`, `Container
-images`, and `Supabase migration and RLS tests`. A merge queue is intentionally
-deferred until parallel Dependabot PRs become common.
+Security updates, minor/major updates, GitHub Actions updates, unsupported ecosystems,
+and unknown metadata remain manual. The workflow requires a GitHub App with
+`Dependabot alerts: read`, `Contents: write`, and `Pull requests: write` permissions so
+it can distinguish ordinary patches from security updates. Store its client ID as the
+`GITHUB_APP_CLIENT_ID` repository variable and its private key as the
+`GITHUB_APP_PRIVATE_KEY` repository secret. Without the App, the auto-merge job is
+skipped and all updates remain manual.
+
+The `Dependency review` job remains a required CI gate for pull requests. The `main`
+ruleset should require `Quality and tests`, `Dependency review`, `Container images`,
+and `Supabase migration and RLS tests`. Keep the `pull_request_target` workflow free
+of checkout steps or commands sourced from the pull request because it uses
+write-capable credentials.
 
 ## 1. Prepare Supabase
 
