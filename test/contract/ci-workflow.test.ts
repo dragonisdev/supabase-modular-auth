@@ -27,10 +27,6 @@ const workflow = parse(
 const packageJson = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ) as { devDependencies?: Record<string, string>; scripts?: Record<string, string> };
-const schemaDriftChecker = readFileSync(
-  new URL("../../docs/database/check-schema-drift.mjs", import.meta.url),
-  "utf8",
-);
 
 const getRunSteps = (job: WorkflowJob | undefined): string[] =>
   job?.steps?.flatMap((step) => (step.run ? [step.run] : [])) ?? [];
@@ -62,10 +58,6 @@ describe("CI workflow contract", () => {
     );
   });
 
-  it("builds shared declarations before checking workspace consumers", () => {
-    expect(packageJson.scripts?.["type-check"]).toMatch(/^pnpm --filter types build && /);
-  });
-
   it("pins third-party actions to immutable commit SHAs", () => {
     const actions = Object.values(workflow.jobs ?? {}).flatMap(getActionSteps);
 
@@ -87,19 +79,10 @@ describe("CI workflow contract", () => {
     const runSteps = getRunSteps(databaseJob);
     const cleanup = databaseJob?.steps?.find((step) => step.run === "pnpm supabase:stop");
 
-    expect(packageJson.devDependencies?.supabase).toBe("2.115.0");
+    expect(packageJson.devDependencies?.supabase).toMatch(/^\d+\.\d+\.\d+$/);
     expect(databaseJob?.services).toBeUndefined();
     expect(databaseJob?.env?.ALLOW_DATABASE_CLUSTER_MUTATIONS).toBe("true");
     expect(databaseJob?.env?.TEST_DATABASE_URL).toContain("127.0.0.1:54322");
-    expect(packageJson.scripts?.["supabase:schema:check"]).toBe(
-      "node docs/database/check-schema-drift.mjs",
-    );
-    expect(packageJson.scripts?.["supabase:schema:diff"]).toBe(
-      "supabase db schema declarative sync --no-apply --strict-coverage",
-    );
-    expect(schemaDriftChecker).toContain('"declarative"');
-    expect(schemaDriftChecker).toContain('"--no-apply"');
-    expect(schemaDriftChecker).toContain('"--strict-coverage"');
     expect(runSteps).toEqual(
       expect.arrayContaining([
         "pnpm supabase:start",

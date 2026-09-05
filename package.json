@@ -28,12 +28,15 @@
     "test:coverage": "vitest run --coverage",
     "test:database": "vitest run test/database test/contract/database-layout.contract.test.ts",
     "test:live": "vitest run test/live",
+    "test:mutation": "stryker run",
     "test:type-check": "tsc --noEmit -p test/tsconfig.json",
     "test:watch": "vitest",
     "type-check": "pnpm --filter types build && pnpm -r --parallel type-check"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
     "@supabase/supabase-js": "2.112.3",
     "@types/express": "5.0.6",
     "@types/node": "25.4.0",

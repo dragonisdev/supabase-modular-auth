@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { api, getErrorMessage, isSessionUnavailable } from "../../frontend/lib/api.ts";
 
@@ -13,10 +13,6 @@ const jsonResponse = (body: unknown, init?: ResponseInit): Response => {
 };
 
 describe("frontend API client", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it("always includes credentials and uses the same-origin auth path", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
