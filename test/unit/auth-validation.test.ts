@@ -15,6 +15,7 @@ import {
 import {
   loginSchema as backendLoginSchema,
   registerSchema as backendRegisterSchema,
+  resetPasswordSchema,
 } from "../../backend/src/validators/auth.validator.ts";
 
 const strongPassword = "correct horse battery staple";
@@ -105,19 +106,27 @@ describe("authentication input validation", () => {
     ).toBe(false);
   });
 
-  it("enforces backend password-strength checks for public and admin writes", () => {
-    expect(
-      backendRegisterSchema.safeParse({
-        email: "weak-password@example.com",
-        password: "a".repeat(AUTH_CONSTANTS.MIN_PASSWORD_LENGTH),
-      }).success,
-    ).toBe(false);
-    expect(
-      createUserBodySchema.safeParse({
-        email: "weak-admin-password@example.com",
-        password: "a".repeat(AUTH_CONSTANTS.MIN_PASSWORD_LENGTH),
-      }).success,
-    ).toBe(false);
-    expect(updateUserBodySchema.safeParse({ password: strongPassword }).success).toBe(true);
+  it.each([
+    ["abcdefghij123!", false], // zxcvbn score 2
+    ["abc123ABC!xyz", true], // zxcvbn score 3: kills >= becoming >
+  ])("enforces the strength boundary for every password write: %s", (password, accepted) => {
+    const input = {
+      email: "user@example.com",
+      username: "Valid User",
+      token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl",
+      password,
+    };
+    for (const schema of [
+      backendRegisterSchema,
+      resetPasswordSchema,
+      createUserBodySchema,
+      updateUserBodySchema,
+    ]) {
+      const result = schema.safeParse(input);
+      expect(result.success).toBe(accepted);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.path)).toEqual([["password"]]);
+      }
+    }
   });
 });

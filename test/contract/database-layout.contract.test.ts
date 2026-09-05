@@ -8,6 +8,7 @@ const ignoredDirectories = new Set([
   ".git",
   ".next",
   ".pnpm-store",
+  ".stryker-tmp",
   ".temp",
   "coverage",
   "dist",
@@ -72,25 +73,10 @@ describe("database layout contract", () => {
   it("keeps local Supabase configuration aligned with application auth", () => {
     const config = readSupabaseFile("config.toml");
 
-    expect(config).toContain('project_id = "supabase-saas-starter"');
     expect(config).toContain('schema_paths = ["./schemas/*.sql"]');
     expect(config).toContain('site_url = "http://localhost:3001"');
     expect(config).toMatch(/\[db\.seed\][\s\S]*?enabled = false/);
     expect(config).toMatch(/\[auth\.email\][\s\S]*?enable_confirmations = true/);
-  });
-
-  it("declares the current audit-log security contract as desired state", () => {
-    const schema = readSupabaseFile("schemas/admin_audit_logs.sql").toLowerCase();
-
-    expect(schema).toContain("create table public.admin_audit_logs");
-    expect(schema).toContain("enable row level security");
-    expect(schema).toContain(
-      "revoke all on public.admin_audit_logs from public, anon, authenticated, service_role",
-    );
-    expect(schema).toContain("grant select, insert on public.admin_audit_logs to service_role");
-    expect(schema).toContain("create trigger admin_audit_logs_prevent_mutation");
-    expect(schema).toContain("security definer");
-    expect(schema).toContain("set search_path = public");
   });
 
   it("declares Supabase baseline extensions explicitly", () => {

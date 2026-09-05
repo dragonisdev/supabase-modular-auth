@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../backend/src/app.ts";
 import sessionService from "../../backend/src/services/session.service.ts";
@@ -18,14 +18,18 @@ import { getCookiePair, getCookieValue, getSetCookies } from "../helpers/http.ts
 describe("Express security surface", () => {
   const app = new App().app;
 
+  const csrfPair = async () => {
+    const response = await request(app).get("/auth/csrf-token").expect(200);
+    const cookie = getSetCookies(response.headers).find((value) => value.startsWith("csrf_token="));
+    expect(cookie).toBeDefined();
+    const cookiePair = getCookiePair(cookie!);
+    return { cookiePair, csrfToken: getCookieValue(cookiePair) };
+  };
+
   beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("serves health with request tracing, CORS, and hardened headers", async () => {
@@ -71,14 +75,7 @@ describe("Express security surface", () => {
   });
 
   it("accepts a matching CSRF pair and rotates the CSRF cookie", async () => {
-    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
-    const initialCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
-      cookie.startsWith("csrf_token="),
-    );
-    expect(initialCookie).toBeTruthy();
-
-    const cookiePair = getCookiePair(initialCookie!);
-    const csrfToken = getCookieValue(cookiePair);
+    const { cookiePair, csrfToken } = await csrfPair();
     const response = await request(app)
       .post("/auth/logout")
       .set("Cookie", cookiePair)
@@ -104,14 +101,7 @@ describe("Express security surface", () => {
     const createRecoveryClient = vi
       .spyOn(SupabaseService, "createRecoveryClient")
       .mockReturnValue({ auth: { resetPasswordForEmail } } as unknown as SupabaseClient);
-    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
-    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
-      cookie.startsWith("csrf_token="),
-    );
-    expect(csrfCookie).toBeTruthy();
-
-    const cookiePair = getCookiePair(csrfCookie!);
-    const csrfToken = getCookieValue(cookiePair);
+    const { cookiePair, csrfToken } = await csrfPair();
     const response = await request(app)
       .post("/auth/forgot-password")
       .set("Cookie", cookiePair)
@@ -140,14 +130,7 @@ describe("Express security surface", () => {
     const createSessionClient = vi
       .spyOn(SupabaseService, "createSessionClient")
       .mockReturnValue({ auth: { signUp } } as unknown as SupabaseClient);
-    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
-    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
-      cookie.startsWith("csrf_token="),
-    );
-    expect(csrfCookie).toBeTruthy();
-
-    const cookiePair = getCookiePair(csrfCookie!);
-    const csrfToken = getCookieValue(cookiePair);
+    const { cookiePair, csrfToken } = await csrfPair();
     const response = await request(app)
       .post("/auth/register")
       .set("Cookie", cookiePair)
@@ -172,14 +155,7 @@ describe("Express security surface", () => {
 
   it("returns a useful message for backend-only password validation failures", async () => {
     const createSessionClient = vi.spyOn(SupabaseService, "createSessionClient");
-    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
-    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
-      cookie.startsWith("csrf_token="),
-    );
-    expect(csrfCookie).toBeTruthy();
-
-    const cookiePair = getCookiePair(csrfCookie!);
-    const csrfToken = getCookieValue(cookiePair);
+    const { cookiePair, csrfToken } = await csrfPair();
     const response = await request(app)
       .post("/auth/register")
       .set("Cookie", cookiePair)
