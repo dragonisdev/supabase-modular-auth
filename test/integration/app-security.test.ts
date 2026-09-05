@@ -129,6 +129,77 @@ describe("Express security surface", () => {
     });
   });
 
+  it("does not disclose whether a registration email already exists", async () => {
+    const signUp = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: "email_address_not_available",
+        message: "User already registered",
+      },
+    });
+    const createSessionClient = vi
+      .spyOn(SupabaseService, "createSessionClient")
+      .mockReturnValue({ auth: { signUp } } as unknown as SupabaseClient);
+    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
+    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
+      cookie.startsWith("csrf_token="),
+    );
+    expect(csrfCookie).toBeTruthy();
+
+    const cookiePair = getCookiePair(csrfCookie!);
+    const csrfToken = getCookieValue(cookiePair);
+    const response = await request(app)
+      .post("/auth/register")
+      .set("Cookie", cookiePair)
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        email: "existing@example.com",
+        password: "correct horse battery staple",
+        username: "Existing User",
+      })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      success: true,
+      message: "If registration can be completed, please check your email to verify your account.",
+    });
+    expect(createSessionClient).toHaveBeenCalledOnce();
+    expect(signUp).toHaveBeenCalledOnce();
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('"message":"Duplicate registration attempt"'),
+    );
+  });
+
+  it("returns a useful message for backend-only password validation failures", async () => {
+    const createSessionClient = vi.spyOn(SupabaseService, "createSessionClient");
+    const tokenResponse = await request(app).get("/auth/csrf-token").expect(200);
+    const csrfCookie = getSetCookies(tokenResponse.headers).find((cookie) =>
+      cookie.startsWith("csrf_token="),
+    );
+    expect(csrfCookie).toBeTruthy();
+
+    const cookiePair = getCookiePair(csrfCookie!);
+    const csrfToken = getCookieValue(cookiePair);
+    const response = await request(app)
+      .post("/auth/register")
+      .set("Cookie", cookiePair)
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        email: "weak-password@example.com",
+        password: "aaaaaaaa",
+        username: "Valid User",
+      })
+      .expect(400);
+
+    expect(response.body).toMatchObject({
+      error: "INVALID_INPUT",
+      message:
+        "Password is too easy to guess. Use a longer, less predictable password or passphrase.",
+      success: false,
+    });
+    expect(createSessionClient).not.toHaveBeenCalled();
+  });
+
   it("returns a normalized JSON 404", async () => {
     const response = await request(app).get("/does-not-exist").expect(404);
 

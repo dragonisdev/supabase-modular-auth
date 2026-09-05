@@ -977,20 +977,22 @@ components:
           format: date-time
     RegisterRequest:
       type: object
-      required: [email, password]
+      required: [email, username, password]
       properties:
         email:
           type: string
           format: email
         username:
           type: string
-          minLength: 3
-          pattern: "^[a-zA-Z0-9_-]+$"
+          minLength: 1
+          maxLength: 64
+          description: Trimmed display name. Control characters are rejected.
         password:
           type: string
           format: password
           minLength: 8
-          description: Must also pass the backend zxcvbn score of at least 3.
+          maxLength: 128
+          description: Must also pass the backend zxcvbn score of at least 3. All characters, including spaces and Unicode, are accepted.
     LoginRequest:
       type: object
       required: [email, password]
@@ -1002,6 +1004,7 @@ components:
           type: string
           format: password
           minLength: 1
+          maxLength: 128
     ForgotPasswordRequest:
       type: object
       required: [email]
@@ -1017,7 +1020,8 @@ components:
           type: string
           format: password
           minLength: 8
-          description: Must also pass the backend zxcvbn score of at least 3.
+          maxLength: 128
+          description: Must also pass the backend zxcvbn score of at least 3. All characters, including spaces and Unicode, are accepted.
         token:
           type: string
           minLength: 10
@@ -1200,10 +1204,12 @@ components:
           format: password
           minLength: 8
           maxLength: 128
+          description: Must also pass the backend zxcvbn score of at least 3.
         username:
           type: string
-          minLength: 3
-          maxLength: 30
+          minLength: 1
+          maxLength: 64
+          description: Trimmed display name. Control characters are rejected.
         role:
           $ref: "#/components/schemas/AdminRole"
         emailConfirmed:
@@ -1217,8 +1223,9 @@ components:
           format: email
         username:
           type: [string, "null"]
-          minLength: 3
-          maxLength: 30
+          minLength: 1
+          maxLength: 64
+          description: Trimmed display name. Control characters are rejected.
         role:
           $ref: "#/components/schemas/AdminRole"
         isAdmin:
@@ -1236,6 +1243,7 @@ components:
           format: password
           minLength: 8
           maxLength: 128
+          description: Must also pass the backend zxcvbn score of at least 3.
     AdminBanUserRequest:
       type: object
       properties:
