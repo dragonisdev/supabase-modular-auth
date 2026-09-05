@@ -50,12 +50,12 @@ const resetToken = z
 /**
  * Registration Schema
  * - Email: required, normalized, lowercased
- * - Username: optional, trimmed display name without control characters
+ * - Username: required, trimmed display name without control characters
  * - Password: required, strong (zxcvbn >= 3)
  */
 export const registerSchema = z.object({
   email: safeEmail,
-  username: safeUsername.optional(),
+  username: safeUsername,
   password: strongPasswordSchema,
 });
 
@@ -65,10 +65,7 @@ export const registerSchema = z.object({
  * - Password: required, no strength validation (just format)
  */
 export const loginSchema = z.object({
-  email: z
-    .email("Invalid email format")
-    .min(1, "Email is required")
-    .transform((val) => val.toLowerCase().trim()),
+  email: safeEmail,
   password: loginPassword,
 });
 

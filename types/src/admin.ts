@@ -35,8 +35,9 @@ export const adminListUsersQuerySchema = z.object({
 
 export const adminCreateUserSchema = z.object({
   email: z
-    .email("Please enter a valid email address (example: user@domain.com).")
+    .string()
     .trim()
+    .email("Please enter a valid email address (example: user@domain.com).")
     .transform((val) => val.toLowerCase()),
   password: strongPasswordSchema,
   username: usernameSchema.optional(),
@@ -46,8 +47,9 @@ export const adminCreateUserSchema = z.object({
 
 export const adminUpdateUserSchema = z.object({
   email: z
-    .email("Please enter a valid email address (example: user@domain.com).")
+    .string()
     .trim()
+    .email("Please enter a valid email address (example: user@domain.com).")
     .transform((val) => val.toLowerCase().trim())
     .optional(),
   username: usernameSchema.nullable().optional(),

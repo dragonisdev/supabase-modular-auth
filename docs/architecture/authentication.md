@@ -5,7 +5,7 @@ Supabase Auth is the identity provider. Express owns the application-facing sess
 ## Registration and login
 
 1. The browser initializes CSRF through Express.
-2. Registration/login payloads are validated with shared Zod schemas. Usernames are trimmed 1–64-character display names without control characters; passwords are 8–128 characters and receive an additional backend zxcvbn check.
+2. Registration/login payloads are validated with shared Zod schemas. Registration requires a username, which is trimmed into a 1–64-character display name without control characters; passwords are 8–128 characters and receive an additional backend zxcvbn check. Email addresses are trimmed and lowercased before use.
 3. Express calls Supabase Auth.
 4. Login is rejected until `email_confirmed_at` is present.
 5. Express returns generic errors to reduce user enumeration.

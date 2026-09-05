@@ -388,7 +388,7 @@ export interface components {
             /** Format: email */
             email: string;
             /** @description Trimmed display name. Control characters are rejected. */
-            username?: string;
+            username: string;
             /**
              * Format: password
              * @description Must also pass the backend zxcvbn score of at least 3. All characters, including spaces and Unicode, are accepted.

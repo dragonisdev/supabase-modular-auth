@@ -13,8 +13,10 @@ export const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/;
 
 // Base Validators
 export const emailSchema = z
+  .string()
+  .trim()
   .email("Invalid email format")
-  .transform((val) => val.toLowerCase().trim());
+  .transform((val) => val.toLowerCase());
 
 export const strongPasswordSchema = z
   .string()
@@ -56,15 +58,12 @@ export const resetTokenSchema = z
 // Form Schemas
 export const registerSchema = z.object({
   email: emailSchema,
-  username: usernameSchema.optional(),
+  username: usernameSchema,
   password: strongPasswordSchema,
 });
 
 export const loginSchema = z.object({
-  email: z
-    .email("Invalid email format")
-    .min(1, "Email is required")
-    .transform((val) => val.toLowerCase().trim()),
+  email: emailSchema,
   password: loginPasswordSchema,
 });
 
@@ -81,7 +80,7 @@ export const resetPasswordSchema = z.object({
 export const registerFormSchema = z
   .object({
     email: emailSchema,
-    username: usernameSchema.optional().or(z.literal("")),
+    username: usernameSchema,
     password: strongPasswordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
