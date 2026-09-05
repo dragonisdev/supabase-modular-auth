@@ -9,9 +9,25 @@ type RedisClient = ReturnType<typeof createClient>;
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 
+const redisErrorReason = (error: Error): string => {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code) {
+    return code;
+  }
+
+  if (/socket closed unexpectedly/i.test(error.message)) {
+    return "SOCKET_CLOSED";
+  }
+  if (/timeout/i.test(error.message)) {
+    return "TIMEOUT";
+  }
+  return "UNKNOWN";
+};
+
 export interface RateLimitStoreOptions {
   connectTimeoutMs: number;
   keyPrefix: string;
+  pingIntervalMs?: number;
   redisUrl?: string;
 }
 
@@ -31,8 +47,10 @@ export class RateLimitStoreService {
     this.client = createClient({
       url: options.redisUrl,
       disableOfflineQueue: true,
+      pingInterval: options.pingIntervalMs,
       socket: {
         connectTimeout: options.connectTimeoutMs,
+        keepAlive: true,
         reconnectStrategy: (retries) => {
           if (!hasConnected && retries >= MAX_RECONNECT_ATTEMPTS) {
             return new Error("Redis rate-limit store reconnect limit reached");
@@ -52,6 +70,7 @@ export class RateLimitStoreService {
       SecurityLogger.warn("Redis rate-limit store connection error", {
         errorName: error.name,
         ...(code ? { code } : {}),
+        reason: redisErrorReason(error),
       });
     });
   }
@@ -112,5 +131,6 @@ export class RateLimitStoreService {
 export const rateLimitStoreService: RateLimitStoreService = new RateLimitStoreService({
   connectTimeoutMs: config.REDIS_CONNECT_TIMEOUT_MS,
   keyPrefix: config.REDIS_KEY_PREFIX,
+  pingIntervalMs: config.REDIS_PING_INTERVAL_MS,
   ...(config.REDIS_URL ? { redisUrl: config.REDIS_URL } : {}),
 });

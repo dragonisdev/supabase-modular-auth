@@ -39,11 +39,14 @@ TRUST_PROXY=1
 REDIS_URL=${{Redis.REDIS_URL}}
 # Or an external TLS Redis provider:
 # REDIS_URL=rediss://default:<password>@<host>:6379
+REDIS_PING_INTERVAL_MS=30000
 REDIS_KEY_PREFIX=supabase-saas:rate-limit:production:
 ```
 
 Leave `COOKIE_DOMAIN` unset.
 The checked-in Next.js rewrite path starts with one represented trusted hop at Express. Verify Railway's sanitized `X-Forwarded-For` chain and adjust only from observed headers; never use an unrestricted trust setting on a publicly reachable backend.
+
+`REDIS_PING_INTERVAL_MS` sends a provider-neutral Redis `PING` every 30 seconds to reduce idle TCP socket eviction. It is not a retry or a bypass: connection failures still fail closed with `503` while node-redis reconnects. Set it to `0` only when the provider does not require it. Do not enable Railway Serverless mode for this backend while the periodic ping is enabled, because the outbound traffic keeps the service awake.
 
 ## Frontend service
 
