@@ -24,6 +24,7 @@ Use exact origins with no trailing slash for `FRONTEND_URL` and `BACKEND_URL`, f
 | CSRF cookie    | `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE`                                              | `strict`; secure flag inherits auth-cookie setting                            |
 | General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`        | See `backend/.env.example`                                                    |
 | Redis          | `REDIS_URL`, `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`                                | URL is required in production; prefix should be unique per environment        |
+| Billing        | `BILLING_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_IDS`        | Disabled by default; enabling requires both secrets and at least one Price ID |
 | Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`              | Rate limits use Redis; account lockout remains process-local                  |
 | HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                    | Proxy hops must match the real topology                                       |
 
@@ -53,6 +54,8 @@ Set `TRUST_PROXY` from the forwarding entries Express actually receives, not fro
 
 An authentication or admin request can consume both the global quota and its route-specific quota. Exceeding a quota returns the route's normalized `429` response. In production all of these counters share Redis; if Redis is unavailable, the request returns `503` rather than bypassing a security control.
 
+`BILLING_ENABLED=false` leaves the billing page in an explicit unconfigured state and performs no Stripe API calls. When enabled, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are critical backend-only secrets; `STRIPE_PRICE_IDS` is a comma-separated allowlist, not client input. `STRIPE_WEBHOOK_MAX_SIZE` defaults to `256kb`. See [Stripe billing](../billing/stripe.md).
+
 ## Frontend values
 
 | Variable                   | Exposure                  | Purpose                                                          |
@@ -78,5 +81,6 @@ Anything prefixed `NEXT_PUBLIC_` can be embedded in browser JavaScript and must 
 - Docker: Compose reads `backend/.env` at runtime; `.dockerignore` prevents it from entering the build context.
 - CI: use repository/environment secrets only for explicit opt-in live jobs. Default CI requires no Supabase credentials.
 - Rotation: if the service-role key is exposed, rotate it in Supabase immediately, update every environment, redeploy, and review admin/audit activity.
+- Stripe: if a secret or webhook signing secret is exposed, roll it in Stripe, update the backend secret store, redeploy, and review Stripe event/API logs. Do not place Stripe secrets in `NEXT_PUBLIC_*` variables.
 
 Google provider secrets and SMTP credentials are configured in Supabase, not in the frontend or this repository.

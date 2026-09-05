@@ -31,6 +31,10 @@ export default function AdminHomePage() {
     router.push("/admin/audit");
   }, [router]);
 
+  const handleGoBilling = useCallback(() => {
+    router.push("/admin/billing");
+  }, [router]);
+
   useEffect(() => {
     const verifyAdmin = async () => {
       const response = await api.getMe();
@@ -127,6 +131,16 @@ export default function AdminHomePage() {
             <h2 className="text-lg font-semibold">Audit Logs</h2>
             <p className="mt-1 text-sm text-amber-100">
               Review admin actions and moderation events.
+            </p>
+          </button>
+
+          <button
+            onClick={handleGoBilling}
+            className="rounded-lg bg-indigo-600 p-5 text-left text-white shadow transition-colors hover:bg-indigo-700"
+          >
+            <h2 className="text-lg font-semibold">Billing Operations</h2>
+            <p className="mt-1 text-sm text-indigo-100">
+              Replay Stripe events and reconcile one user&apos;s subscription projection.
             </p>
           </button>
         </div>

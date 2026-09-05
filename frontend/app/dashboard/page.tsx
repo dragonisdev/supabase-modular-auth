@@ -58,6 +58,10 @@ export default function DashboardPage() {
     router.push("/admin");
   }, [router]);
 
+  const handleGoToBilling = useCallback(() => {
+    router.push("/billing");
+  }, [router]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -98,6 +102,13 @@ export default function DashboardPage() {
           <div className="flex h-16 items-center justify-between">
             <h1 className="text-xl font-bold text-black">Dashboard</h1>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleGoToBilling}
+                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+              >
+                Billing
+              </button>
+
               {user.is_admin && (
                 <button
                   onClick={handleGoToAdmin}

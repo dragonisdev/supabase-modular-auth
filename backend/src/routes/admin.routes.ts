@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
 import config from "../config/env.js";
 import { AdminController } from "../controllers/admin.controller.js";
+import { BillingController } from "../controllers/billing.controller.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { createRateLimiter } from "../middleware/rate-limit.middleware.js";
@@ -20,6 +21,7 @@ const getAdminRateLimitKey = (req: AuthenticatedRequest): string => {
 export const createAdminRoutes = (): Router => {
   const router = Router();
   const adminController = new AdminController();
+  const billingController = new BillingController();
   const adminReadLimiter = createRateLimiter("admin-read", {
     windowMs: config.RATE_LIMIT_WINDOW_MS,
     max: Math.max(config.RATE_LIMIT_MAX_REQUESTS, config.AUTH_RATE_LIMIT_MAX_REQUESTS * 10),
@@ -75,6 +77,13 @@ export const createAdminRoutes = (): Router => {
   router.post("/users/bulk", (req, res, next) => adminController.bulkAction(req, res, next));
 
   router.get("/audit-logs", (req, res, next) => adminController.listAuditLogs(req, res, next));
+
+  router.post("/billing/webhooks/:eventId/replay", (req, res, next) =>
+    billingController.replayWebhook(req, res, next),
+  );
+  router.post("/billing/reconcile", (req, res, next) =>
+    billingController.reconcileUser(req, res, next),
+  );
 
   return router;
 };

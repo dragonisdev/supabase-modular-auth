@@ -1,6 +1,6 @@
 # Database migrations and operations
 
-`supabase/` is the conventional Supabase CLI project and the canonical home for database workflow SQL. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
+`supabase/` is the conventional Supabase CLI project and the canonical home for database workflow SQL. The migrations create durable, service-role-only admin audit logging and Stripe billing projections with RLS, append-only controls, and explicit function privileges.
 
 ```text
 supabase/
@@ -10,8 +10,9 @@ supabase/
 │  ├─ extensions.sql                  # Explicit Supabase extension baseline
 │  └─ admin_audit_logs.sql            # Application-owned desired state
 ├─ migrations/
-│  └─ 20260311000000_admin_audit_logs.sql
-└─ tests/admin_audit_logs.test.sql    # pgTAP security checks
+│  ├─ 20260311000000_admin_audit_logs.sql
+│  └─ 20260824010000_billing.sql
+└─ tests/                             # pgTAP security checks
 ```
 
 ## Declarative schema workflow

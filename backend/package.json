@@ -28,6 +28,7 @@
     "helmet": "^8.1.0",
     "rate-limit-redis": "6.0.1",
     "redis": "6.2.0",
+    "stripe": "22.4.0",
     "typescript": "catalog:",
     "uuid": "^13.0.1",
     "xss": "^1.0.15",

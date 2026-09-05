@@ -13,10 +13,15 @@ import type {
   LoginResponseData,
   GetMeResponseData,
   GoogleAuthUrlResponseData,
+  BillingOverviewData,
+  BillingReconcileResult,
+  BillingRedirectData,
+  BillingWebhookReplayResult,
 } from "@supabase-modular-auth/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const ADMIN_API_PREFIX = API_BASE_URL ? "/admin" : "/api/admin";
+const BILLING_API_PREFIX = API_BASE_URL ? "/billing" : "/api/billing";
 const CSRF_COOKIE_NAME = "csrf_token";
 
 // Re-export types for convenience
@@ -301,6 +306,31 @@ export const api = {
           action: query?.action,
         })}`,
       ),
+
+    replayBillingWebhook: (eventId: string) =>
+      fetchAPI<BillingWebhookReplayResult>(
+        `${ADMIN_API_PREFIX}/billing/webhooks/${encodeURIComponent(eventId)}/replay`,
+        { method: "POST" },
+      ),
+
+    reconcileBillingUser: (userId: string) =>
+      fetchAPI<BillingReconcileResult>(`${ADMIN_API_PREFIX}/billing/reconcile`, {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      }),
+  },
+
+  billing: {
+    getOverview: () => fetchAPI<BillingOverviewData>(BILLING_API_PREFIX),
+    createCheckout: (priceId: string) =>
+      fetchAPI<BillingRedirectData>(`${BILLING_API_PREFIX}/checkout`, {
+        method: "POST",
+        body: JSON.stringify({ priceId }),
+      }),
+    createPortal: () =>
+      fetchAPI<BillingRedirectData>(`${BILLING_API_PREFIX}/portal`, {
+        method: "POST",
+      }),
   },
 
   // Google OAuth

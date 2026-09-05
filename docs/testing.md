@@ -8,7 +8,12 @@ pnpm test:type-check
 pnpm test:coverage
 ```
 
-`test/database/migration-policy.test.ts` always checks migration and RLS invariants. Set `TEST_DATABASE_URL` to create a randomly named disposable database, apply each migration once, verify grants, real role behavior, RLS, triggers, and retention, then drop that database:
+The default suite mocks Stripe and Supabase at the service boundary. Billing coverage includes the
+server-side price allowlist, catalog projection, hosted Checkout parameters, duplicate webhook
+idempotency, forced replay bookkeeping, same-origin frontend paths, and the raw-signature/CSRF
+boundary. It does not call a live Stripe account.
+
+`test/database/migration-policy.test.ts` always checks migration and RLS invariants, including the service-role-only billing projection. Set `TEST_DATABASE_URL` to create a randomly named disposable database, apply each migration once, verify grants, real role behavior, RLS, triggers, retention, and billing browser-role denial, then drop that database:
 
 ```bash
 ALLOW_DATABASE_CLUSTER_MUTATIONS=true \

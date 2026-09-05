@@ -58,6 +58,8 @@ FRONTEND_PROXY_TARGET=http://localhost:3000
 
 The full configuration and sensitivity matrix is in [Environment variables and secrets](configuration/environment.md).
 
+Billing is disabled by default and does not block auth/admin setup. Configure it later using [Stripe billing](billing/stripe.md); apply the billing migration before setting `BILLING_ENABLED=true`.
+
 ## 3. Run on the host
 
 ```bash
@@ -174,6 +176,7 @@ The audit-log migration must be present before treating the admin audit feed as 
 - OAuth returns to `/auth/google/callback` on the frontend origin.
 - A normal user receives 401 from admin endpoints.
 - The first admin can read the persistent audit feed.
+- When billing is enabled, `/billing` loads only allowlisted Stripe prices and a signed test webhook updates the local subscription projection once.
 - Only frontend ports are public; the service-role key exists only in the backend environment.
 
 ## Scaling boundary

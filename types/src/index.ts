@@ -2,6 +2,7 @@
 export * from "./auth.js";
 export * from "./api.js";
 export * from "./admin.js";
+export * from "./billing.js";
 export type {
   components as OpenApiComponents,
   operations as OpenApiOperations,

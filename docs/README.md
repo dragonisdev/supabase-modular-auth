@@ -16,6 +16,7 @@ Start with [setup](setup.md), then use the focused guides below.
 - [API contract](api.md)
 - [Database migrations](database/migrations.md)
 - [Admin access](operations/admin-access.md)
+- [Stripe billing](billing/stripe.md)
 - [Testing](testing.md)
 - [Railway deployment](deployment/railway.md)
 
@@ -24,5 +25,6 @@ Start with [setup](setup.md), then use the focused guides below.
 - [Admin role delegation decision](decisions/admin-role-delegation.md)
 - [Declarative database schema decision](decisions/declarative-database-schema.md)
 - [Redis rate-limiting decision](decisions/0001-redis-rate-limiting.md)
+- [Stripe billing provider decision](decisions/0002-stripe-billing-provider.md)
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.

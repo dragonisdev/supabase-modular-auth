@@ -139,6 +139,40 @@ describe("Express security surface", () => {
     });
   });
 
+  it("keeps billing backend-driven and stable when the optional provider is disabled", async () => {
+    const user = createTestUser();
+    vi.spyOn(sessionService, "resolve").mockResolvedValue({
+      accessToken: ACCESS_TOKEN,
+      status: "authenticated",
+      user,
+    });
+
+    const response = await request(app)
+      .get("/billing")
+      .set("Cookie", `auth_token=${ACCESS_TOKEN}`)
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: { enabled: false, plans: [], subscriptions: [] },
+      message: "Billing overview retrieved",
+      success: true,
+    });
+  });
+
+  it("authenticates the raw billing webhook with its provider signature instead of CSRF", async () => {
+    const response = await request(app)
+      .post("/billing/webhook")
+      .set("Content-Type", "application/json")
+      .send({})
+      .expect(400);
+
+    expect(response.body).toEqual({
+      error: "INVALID_INPUT",
+      message: "Invalid billing webhook request",
+      success: false,
+    });
+  });
+
   it("resolves /auth/me once and emits rotated session cookies", async () => {
     const session = createTestSession();
     const user = createTestUser();

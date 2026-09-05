@@ -349,6 +349,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current user's billing catalog and subscription projection */
+        get: operations["getBillingOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a Stripe-hosted subscription checkout session */
+        post: operations["createBillingCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a Stripe-hosted customer portal session */
+        post: operations["createBillingPortal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify and process a Stripe webhook
+         * @description Requires the exact raw JSON body and a valid Stripe-Signature header; CSRF does not apply.
+         */
+        post: operations["receiveStripeBillingWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/webhooks/{eventId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay one Stripe webhook event from the provider */
+        post: operations["replayBillingWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/billing/reconcile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reconcile one user's subscriptions from Stripe */
+        post: operations["reconcileBillingUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -445,6 +550,62 @@ export interface components {
         CurrentUserResponse: components["schemas"]["SuccessEnvelope"] & {
             data: {
                 user: components["schemas"]["AuthUser"];
+            };
+        };
+        BillingCheckoutRequest: {
+            priceId: string;
+        };
+        BillingReconcileRequest: {
+            /** Format: uuid */
+            userId: string;
+        };
+        BillingPlan: {
+            currency: string;
+            description: string | null;
+            /** @enum {string} */
+            interval: "day" | "week" | "month" | "year";
+            intervalCount: number;
+            name: string;
+            priceId: string;
+            unitAmount: number;
+        };
+        BillingSubscription: {
+            cancelAtPeriodEnd: boolean;
+            /** Format: date-time */
+            currentPeriodEnd: string | null;
+            /** Format: date-time */
+            currentPeriodStart: string | null;
+            priceId: string | null;
+            providerSubscriptionId: string;
+            /** @enum {string} */
+            status: "active" | "canceled" | "incomplete" | "incomplete_expired" | "past_due" | "paused" | "trialing" | "unpaid";
+        };
+        BillingOverviewResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                enabled: boolean;
+                plans: components["schemas"]["BillingPlan"][];
+                subscriptions: components["schemas"]["BillingSubscription"][];
+            };
+        };
+        BillingRedirectResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                /** Format: uri */
+                url: string;
+            };
+        };
+        BillingWebhookResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                eventId: string;
+                eventType: string;
+                processed: boolean;
+            };
+        };
+        BillingReconcileResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                customerFound: boolean;
+                subscriptionsSynchronized: number;
+                /** Format: uuid */
+                userId: string;
             };
         };
         /** @enum {string} */
@@ -659,6 +820,49 @@ export interface components {
                 "application/json": components["schemas"]["CurrentUserResponse"];
             };
         };
+        /** @description Billing configuration, catalog, and subscription projection returned. */
+        BillingOverviewSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                "Set-Cookie": components["headers"]["SetCookie"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["BillingOverviewResponse"];
+            };
+        };
+        /** @description Stripe-hosted redirect session created. */
+        BillingRedirectSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                "Set-Cookie": components["headers"]["SetCookie"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["BillingRedirectResponse"];
+            };
+        };
+        /** @description Stripe event accepted, replayed, or already processed. */
+        BillingWebhookSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["BillingWebhookResponse"];
+            };
+        };
+        /** @description One user's Stripe subscriptions reconciled. */
+        BillingReconcileSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                "Set-Cookie": components["headers"]["SetCookie"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["BillingReconcileResponse"];
+            };
+        };
         /** @description Paginated users returned. */
         AdminUsersSuccess: {
             headers: {
@@ -800,6 +1004,8 @@ export interface components {
     parameters: {
         /** @description Supabase user identifier. */
         UserId: string;
+        /** @description Stripe event identifier. */
+        StripeEventId: string;
         Page: number;
         Limit: number;
         Search: string;
@@ -1212,6 +1418,132 @@ export interface operations {
             200: components["responses"]["AdminAuditLogsSuccess"];
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getBillingOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["BillingOverviewSuccess"];
+            401: components["responses"]["Unauthorized"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createBillingCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingCheckoutRequest"];
+            };
+        };
+        responses: {
+            201: components["responses"]["BillingRedirectSuccess"];
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createBillingPortal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: components["responses"]["BillingRedirectSuccess"];
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    receiveStripeBillingWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: components["responses"]["BillingWebhookSuccess"];
+            400: components["responses"]["BadRequest"];
+            408: components["responses"]["RequestTimeout"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    replayBillingWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Stripe event identifier. */
+                eventId: components["parameters"]["StripeEventId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["BillingWebhookSuccess"];
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    reconcileBillingUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingReconcileRequest"];
+            };
+        };
+        responses: {
+            200: components["responses"]["BillingReconcileSuccess"];
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             408: components["responses"]["RequestTimeout"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];

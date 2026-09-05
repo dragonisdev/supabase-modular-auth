@@ -13,6 +13,7 @@ import { createRateLimiter } from "./middleware/rate-limit.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { createAdminRoutes } from "./routes/admin.routes.js";
 import { createAuthRoutes } from "./routes/auth.routes.js";
+import { createBillingRoutes, createBillingWebhookRoutes } from "./routes/billing.routes.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 /**
@@ -151,6 +152,11 @@ class App {
       }),
     );
 
+    // Stripe signature verification requires the exact raw request body.
+    // Mount this route before JSON parsing and CSRF; the provider signature is its authentication.
+    const billingWebhookRoutes = createBillingWebhookRoutes();
+    this.app.use("/billing", billingWebhookRoutes);
+
     // Body parsing with strict size limits
     this.app.use(
       express.json({
@@ -222,8 +228,10 @@ class App {
     // API routes
     const authRoutes = createAuthRoutes();
     const adminRoutes = createAdminRoutes();
+    const billingRoutes = createBillingRoutes();
     this.app.use("/auth", authRoutes);
     this.app.use("/admin", adminRoutes);
+    this.app.use("/billing", billingRoutes);
 
     // 404 handler
     this.app.use(notFoundHandler);
