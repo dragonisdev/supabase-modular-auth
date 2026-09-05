@@ -1,0 +1,56 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+    branches:
+      - main
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enable-patch-auto-merge:
+    name: Enable ordinary npm patch auto-merge
+    if: >-
+      github.repository == 'dragonisdev/supabase-modular-auth' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      vars.GITHUB_APP_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: dependabot-cooldown
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ vars.GITHUB_APP_CLIENT_ID }}
+          private-key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-vulnerability-alerts: read
+
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7 # v2.3.0
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          alert-lookup: true
+      - name: Enable auto-merge for ordinary npm patch updates
+        if: >-
+          steps.metadata.outputs.package-ecosystem == 'npm' &&
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' &&
+          steps.metadata.outputs.alert-state == '' &&
+          steps.metadata.outputs.maintainer-changes == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
