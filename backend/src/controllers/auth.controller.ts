@@ -23,6 +23,9 @@ import {
 } from "../validators/auth.validator.js";
 
 export class AuthController {
+  private static readonly registrationSuccessMessage =
+    "If registration can be completed, please check your email to verify your account.";
+
   private buildBanMessage(appMetadata: unknown): string {
     if (!appMetadata || typeof appMetadata !== "object") {
       return "Your account has been suspended. Please contact support.";
@@ -111,7 +114,14 @@ export class AuthController {
       // Validate input
       const validation = registerSchema.safeParse(req.body);
       if (!validation.success) {
-        throw new ValidationError("Invalid registration data", validation.error);
+        const passwordIssue = validation.error.issues.find((issue) => issue.path[0] === "password");
+        const usernameIssue = validation.error.issues.find((issue) => issue.path[0] === "username");
+        throw new ValidationError(
+          passwordIssue?.message ??
+            usernameIssue?.message ??
+            "Please check your registration data.",
+          validation.error,
+        );
       }
 
       const { email, password, username } = validation.data;
@@ -145,27 +155,11 @@ export class AuthController {
         // Record failed attempt for rate limiting
         lockoutService.recordFailedAttempt(`register:${email}`, clientIp);
 
-        // Log error securely
-        SecurityLogger.logRegistrationError(email, error as Error, req);
-
         // Handle specific error cases with user-friendly messages
         const errorMessage = error.message?.toLowerCase() || "";
         type SupabaseError = { code?: string; status?: number; name?: string; message?: string };
         const supaErr = error as SupabaseError;
         const errorCode = supaErr.code || "";
-
-        // Connection/timeout errors
-        if (
-          error.name === "AuthRetryableFetchError" ||
-          errorMessage.includes("fetch failed") ||
-          errorMessage.includes("timeout") ||
-          errorCode === "UND_ERR_CONNECT_TIMEOUT"
-        ) {
-          throw new AuthError(
-            "Unable to connect to authentication service. Please try again.",
-            ErrorCode.CONNECTION_FAILED,
-          );
-        }
 
         // Enhanced duplicate email detection
         if (
@@ -178,13 +172,24 @@ export class AuthController {
         ) {
           SecurityLogger.warn(`Duplicate registration attempt`, { ip: clientIp });
           // Non-enumerating response - same as success
-          successResponse(
-            res,
-            "Registration successful. Please check your email to verify your account.",
-            undefined,
-            201,
-          );
+          successResponse(res, AuthController.registrationSuccessMessage, undefined, 201);
           return;
+        }
+
+        // Log non-duplicate errors securely
+        SecurityLogger.logRegistrationError(email, error as Error, req);
+
+        // Connection/timeout errors
+        if (
+          error.name === "AuthRetryableFetchError" ||
+          errorMessage.includes("fetch failed") ||
+          errorMessage.includes("timeout") ||
+          errorCode === "UND_ERR_CONNECT_TIMEOUT"
+        ) {
+          throw new AuthError(
+            "Unable to connect to authentication service. Please try again.",
+            ErrorCode.CONNECTION_FAILED,
+          );
         }
 
         if (errorCode === "email_address_invalid") {
@@ -228,12 +233,7 @@ export class AuthController {
       SecurityLogger.logRegistration(email, req);
 
       // Success - email verification required
-      successResponse(
-        res,
-        "Registration successful. Please check your email to verify your account.",
-        undefined,
-        201,
-      );
+      successResponse(res, AuthController.registrationSuccessMessage, undefined, 201);
     } catch (error) {
       next(error);
     }

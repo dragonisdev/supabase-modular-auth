@@ -118,7 +118,7 @@ export default function RegisterPage() {
           <div className="text-center">
             <h2 className="mb-4 text-2xl font-bold text-green-600">Check Your Email</h2>
             <p className="mb-6 text-gray-600">
-              Please check your email to verify your account before logging in.
+              If registration can be completed, please check your email to verify your account.
             </p>
             <Link
               href="/login"
