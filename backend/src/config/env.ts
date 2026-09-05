@@ -67,6 +67,15 @@ const envSchema = z.object({
     .refine((value) => value > 0, { message: "Must be greater than zero" })
     .optional()
     .default(5000),
+  REDIS_PING_INTERVAL_MS: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .refine((value) => value === 0 || (value >= 1000 && value <= 3_600_000), {
+      message: "Must be 0 or between 1000 and 3600000",
+    })
+    .optional()
+    .default(30_000),
 
   // Security
   TRUST_PROXY: z
