@@ -112,6 +112,7 @@ export default function LoginPage() {
             value={email}
             onChange={handleEmailChange}
             required
+            autoComplete="username"
             disabled={loading}
             error={fieldErrors.email}
           />
@@ -122,6 +123,8 @@ export default function LoginPage() {
             value={password}
             onChange={handlePasswordChange}
             required
+            maxLength={128}
+            autoComplete="current-password"
             disabled={loading}
             error={fieldErrors.password}
           />

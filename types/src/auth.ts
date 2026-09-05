@@ -3,11 +3,12 @@ import { z } from "zod";
 // Constants
 export const AUTH_CONSTANTS = {
   MIN_PASSWORD_LENGTH: 8,
-  MIN_USERNAME_LENGTH: 3,
+  MAX_PASSWORD_LENGTH: 128,
+  MIN_USERNAME_LENGTH: 1,
+  MAX_USERNAME_LENGTH: 64,
 } as const;
 
 // Validation Patterns
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$/;
 
 // Base Validators
@@ -17,14 +18,34 @@ export const emailSchema = z
 
 export const strongPasswordSchema = z
   .string()
-  .min(AUTH_CONSTANTS.MIN_PASSWORD_LENGTH, "Password must be at least 8 characters");
+  .min(
+    AUTH_CONSTANTS.MIN_PASSWORD_LENGTH,
+    `Password must be at least ${AUTH_CONSTANTS.MIN_PASSWORD_LENGTH} characters`,
+  )
+  .max(
+    AUTH_CONSTANTS.MAX_PASSWORD_LENGTH,
+    `Password cannot exceed ${AUTH_CONSTANTS.MAX_PASSWORD_LENGTH} characters`,
+  );
 
-export const loginPasswordSchema = z.string().min(1, "Password is required");
+export const loginPasswordSchema = z
+  .string()
+  .min(1, "Password is required")
+  .max(
+    AUTH_CONSTANTS.MAX_PASSWORD_LENGTH,
+    `Password cannot exceed ${AUTH_CONSTANTS.MAX_PASSWORD_LENGTH} characters`,
+  );
 
 export const usernameSchema = z
   .string()
-  .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username must be at least 3 characters")
-  .regex(USERNAME_PATTERN, "Username can only contain letters, numbers, hyphens, and underscores");
+  .trim()
+  .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username is required")
+  .max(
+    AUTH_CONSTANTS.MAX_USERNAME_LENGTH,
+    `Username cannot exceed ${AUTH_CONSTANTS.MAX_USERNAME_LENGTH} characters`,
+  )
+  .refine((value) => !/[\p{Cc}\p{Cs}]/u.test(value), {
+    message: "Username cannot contain control characters",
+  });
 
 export const resetTokenSchema = z
   .string()

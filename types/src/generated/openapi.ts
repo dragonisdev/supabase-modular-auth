@@ -387,10 +387,11 @@ export interface components {
         RegisterRequest: {
             /** Format: email */
             email: string;
+            /** @description Trimmed display name. Control characters are rejected. */
             username?: string;
             /**
              * Format: password
-             * @description Must also pass the backend zxcvbn score of at least 3.
+             * @description Must also pass the backend zxcvbn score of at least 3. All characters, including spaces and Unicode, are accepted.
              */
             password: string;
         };
@@ -407,7 +408,7 @@ export interface components {
         ResetPasswordRequest: {
             /**
              * Format: password
-             * @description Must also pass the backend zxcvbn score of at least 3.
+             * @description Must also pass the backend zxcvbn score of at least 3. All characters, including spaces and Unicode, are accepted.
              */
             password: string;
             token: string;
@@ -484,8 +485,12 @@ export interface components {
         AdminCreateUserRequest: {
             /** Format: email */
             email: string;
-            /** Format: password */
+            /**
+             * Format: password
+             * @description Must also pass the backend zxcvbn score of at least 3.
+             */
             password: string;
+            /** @description Trimmed display name. Control characters are rejected. */
             username?: string;
             role?: components["schemas"]["AdminRole"];
             /** @default false */
@@ -494,6 +499,7 @@ export interface components {
         AdminUpdateUserRequest: {
             /** Format: email */
             email?: string;
+            /** @description Trimmed display name. Control characters are rejected. */
             username?: string | null;
             role?: components["schemas"]["AdminRole"];
             isAdmin?: boolean;
@@ -501,7 +507,10 @@ export interface components {
             banReason?: string | null;
             /** Format: date-time */
             banExpiresAt?: string | null;
-            /** Format: password */
+            /**
+             * Format: password
+             * @description Must also pass the backend zxcvbn score of at least 3.
+             */
             password?: string;
         };
         AdminBanUserRequest: {

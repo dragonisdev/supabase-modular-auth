@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { strongPasswordSchema, usernameSchema } from "./auth.js";
+
 export const adminRoleSchema = z.enum(["admin", "user"]);
 
 export const adminListUsersQuerySchema = z.object({
@@ -36,16 +38,8 @@ export const adminCreateUserSchema = z.object({
     .email("Please enter a valid email address (example: user@domain.com).")
     .trim()
     .transform((val) => val.toLowerCase()),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters long.")
-    .max(128, "Password cannot exceed 128 characters."),
-  username: z
-    .string()
-    .trim()
-    .min(3, "Username must be at least 3 characters long.")
-    .max(30, "Username cannot exceed 30 characters.")
-    .optional(),
+  password: strongPasswordSchema,
+  username: usernameSchema.optional(),
   role: adminRoleSchema.optional().default("user"),
   emailConfirmed: z.boolean().optional().default(false),
 });
@@ -56,13 +50,7 @@ export const adminUpdateUserSchema = z.object({
     .trim()
     .transform((val) => val.toLowerCase().trim())
     .optional(),
-  username: z
-    .string()
-    .trim()
-    .min(3, "Username must be at least 3 characters long.")
-    .max(30, "Username cannot exceed 30 characters.")
-    .nullable()
-    .optional(),
+  username: usernameSchema.nullable().optional(),
   role: adminRoleSchema.optional(),
   isAdmin: z.boolean().optional(),
   banned: z.boolean().optional(),
@@ -73,11 +61,7 @@ export const adminUpdateUserSchema = z.object({
     .nullable()
     .optional(),
   banExpiresAt: z.iso.datetime().nullable().optional(),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters long.")
-    .max(128, "Password cannot exceed 128 characters.")
-    .optional(),
+  password: strongPasswordSchema.optional(),
 });
 
 export const adminBanUserSchema = z.object({
