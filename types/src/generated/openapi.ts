@@ -387,7 +387,7 @@ export interface components {
         RegisterRequest: {
             /** Format: email */
             email: string;
-            /** @description Trimmed display name. Control characters are rejected. */
+            /** @description Trimmed, NFC-normalized display name. Invisible, control, and nonstandard whitespace characters are rejected. */
             username: string;
             /**
              * Format: password

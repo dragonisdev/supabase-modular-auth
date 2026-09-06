@@ -40,6 +40,10 @@ describe("authentication input validation", () => {
     ).toBe("Zoë O'Connor — 東京 👋");
   });
 
+  it("normalizes display names to NFC", () => {
+    expect(usernameSchema.parse("Cafe\u0301")).toBe("Café");
+  });
+
   it("trims and lowercases email addresses before validation output", () => {
     const input = "  USER@Example.com  ";
 
@@ -59,9 +63,15 @@ describe("authentication input validation", () => {
     );
   });
 
-  it("rejects empty, control-character, and oversized display names", () => {
+  it("rejects empty, invisible, control-character, nonstandard-whitespace, and oversized display names", () => {
     expect(usernameSchema.safeParse("   ").success).toBe(false);
     expect(usernameSchema.safeParse("Ada\nLovelace").success).toBe(false);
+    expect(usernameSchema.safeParse("\u200B").success).toBe(false);
+    expect(usernameSchema.safeParse("Ada\u200DLovelace").success).toBe(false);
+    expect(usernameSchema.safeParse("\u202Eadmin").success).toBe(false);
+    expect(usernameSchema.safeParse("\u2800").success).toBe(false);
+    expect(usernameSchema.safeParse("\u3164").success).toBe(false);
+    expect(usernameSchema.safeParse("Ada\u00A0Lovelace").success).toBe(false);
     expect(
       usernameSchema.safeParse("a".repeat(AUTH_CONSTANTS.MAX_USERNAME_LENGTH + 1)).success,
     ).toBe(false);
@@ -89,6 +99,7 @@ describe("authentication input validation", () => {
       }).username,
     ).toBe("Renée D.");
     expect(updateUserBodySchema.parse({ username: "  Kōji 山田  " }).username).toBe("Kōji 山田");
+    expect(updateUserBodySchema.safeParse({ username: "Admin\u202E" }).success).toBe(false);
   });
 
   it("preserves passwords exactly while enforcing shared length bounds", () => {

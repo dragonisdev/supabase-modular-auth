@@ -986,7 +986,7 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: Trimmed display name. Control characters are rejected.
+          description: Trimmed, NFC-normalized display name. Invisible, control, and nonstandard whitespace characters are rejected.
         password:
           type: string
           format: password

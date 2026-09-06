@@ -37,16 +37,21 @@ export const loginPasswordSchema = z
     `Password cannot exceed ${AUTH_CONSTANTS.MAX_PASSWORD_LENGTH} characters`,
   );
 
+const hasDisallowedUsernameCharacter = (value: string): boolean =>
+  /[\p{C}\u2800\u3164\uffa0]/u.test(value) ||
+  [...value].some((character) => character !== " " && /\p{Z}/u.test(character));
+
 export const usernameSchema = z
   .string()
   .trim()
+  .normalize("NFC")
   .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username is required")
   .max(
     AUTH_CONSTANTS.MAX_USERNAME_LENGTH,
     `Username cannot exceed ${AUTH_CONSTANTS.MAX_USERNAME_LENGTH} characters`,
   )
-  .refine((value) => !/[\p{Cc}\p{Cs}]/u.test(value), {
-    message: "Username cannot contain control characters",
+  .refine((value) => !hasDisallowedUsernameCharacter(value), {
+    message: "Username cannot contain invisible, control, or nonstandard whitespace characters",
   });
 
 export const resetTokenSchema = z
