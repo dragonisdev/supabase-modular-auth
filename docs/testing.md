@@ -24,15 +24,16 @@ pnpm test:mutation --mutate backend/src/services/session.service.ts
 ```
 
 Stryker changes production code in a temporary `.stryker-tmp/` copy and runs the relevant Vitest
-tests. The default scope is session resolution, authentication middleware, auth cookies, and backend
-password strength. The mutation Vitest configuration includes only unit tests and mocked Express
-security tests, even when live-test environment variables are set. It does not run Redis,
+tests. The default scope is session resolution, authentication middleware, auth cookies, backend
+password strength, and shared authentication schemas. The mutation Vitest configuration includes
+only unit tests and mocked Express security tests, even when live-test environment variables are set.
+It does not run Redis,
 PostgreSQL, or live Supabase tests. HTML and JSON reports are written under `coverage/mutation/`;
 `pnpm test:coverage` clears that directory, so run coverage before mutations when retaining both.
 
 Review surviving mutants for missing behavioral assertions or equivalent changes before adding
 tests. A surviving log-message mutation alone is not a reason to freeze prose. The mutation score
-applies only to the four configured files, not the whole repository. Mutation testing is an explicit
+applies only to the five configured files, not the whole repository. Mutation testing is an explicit
 local command; the regular CI coverage gate remains in place.
 
 The command fails below a 75% mutation score. On the initial four-file review, the original suite

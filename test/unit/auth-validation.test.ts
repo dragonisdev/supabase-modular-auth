@@ -1,8 +1,12 @@
 import {
   AUTH_CONSTANTS,
+  forgotPasswordSchema,
   loginSchema as sharedLoginSchema,
   registerSchema as sharedRegisterSchema,
   registerFormSchema,
+  resetPasswordFormSchema,
+  resetPasswordSchema as sharedResetPasswordSchema,
+  resetTokenSchema,
   strongPasswordSchema as sharedStrongPasswordSchema,
   usernameSchema,
 } from "@supabase-modular-auth/types";
@@ -19,6 +23,7 @@ import {
 } from "../../backend/src/validators/auth.validator.ts";
 
 const strongPassword = "correct horse battery staple";
+const validResetToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl";
 
 describe("authentication input validation", () => {
   it("accepts and trims an international display name", () => {
@@ -93,6 +98,76 @@ describe("authentication input validation", () => {
     ).toBe(false);
   });
 
+  it("requires valid reset-token structure for shared reset requests", () => {
+    expect(
+      sharedResetPasswordSchema.safeParse({
+        password: strongPassword,
+        token: validResetToken,
+      }).success,
+    ).toBe(true);
+
+    for (const token of [
+      `!${validResetToken}`,
+      `${validResetToken}!`,
+      validResetToken.replace(".", "!"),
+      "a".repeat(9),
+      "a".repeat(2049),
+    ]) {
+      const result = resetTokenSchema.safeParse(token);
+      expect(result.success).toBe(false);
+      expect(sharedResetPasswordSchema.safeParse({ password: strongPassword, token }).success).toBe(
+        false,
+      );
+    }
+
+    expect(sharedResetPasswordSchema.safeParse({ password: strongPassword }).success).toBe(false);
+  });
+
+  it("requires and normalizes the email for password-recovery requests", () => {
+    expect(forgotPasswordSchema.parse({ email: " USER@Example.com " }).email).toBe(
+      "user@example.com",
+    );
+    expect(forgotPasswordSchema.safeParse({}).success).toBe(false);
+    expect(forgotPasswordSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
+  });
+
+  it("requires matching confirmation passwords in both client forms", () => {
+    const registerInput = {
+      email: "user@example.com",
+      username: "Valid User",
+      password: strongPassword,
+      confirmPassword: strongPassword,
+    };
+    const resetInput = {
+      password: strongPassword,
+      confirmPassword: strongPassword,
+      token: validResetToken,
+    };
+
+    expect(registerFormSchema.safeParse(registerInput).success).toBe(true);
+    expect(resetPasswordFormSchema.safeParse(resetInput).success).toBe(true);
+
+    for (const [schema, input] of [
+      [registerFormSchema, { ...registerInput, confirmPassword: "different password" }],
+      [resetPasswordFormSchema, { ...resetInput, confirmPassword: "different password" }],
+    ] as const) {
+      const result = schema.safeParse(input);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toContainEqual(
+          expect.objectContaining({ path: ["confirmPassword"], message: "Passwords do not match" }),
+        );
+      }
+    }
+
+    expect(registerFormSchema.safeParse({ ...registerInput, confirmPassword: "" }).success).toBe(
+      false,
+    );
+    expect(resetPasswordFormSchema.safeParse({ ...resetInput, confirmPassword: "" }).success).toBe(
+      false,
+    );
+  });
+
   it("applies the same display-name rule to admin create and update requests", () => {
     expect(
       createUserBodySchema.parse({
@@ -126,7 +201,7 @@ describe("authentication input validation", () => {
     const input = {
       email: "user@example.com",
       username: "Valid User",
-      token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl",
+      token: validResetToken,
       password,
     };
     for (const schema of [

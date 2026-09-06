@@ -21,7 +21,8 @@
     "backend/src/services/session.service.ts",
     "backend/src/middleware/auth.middleware.ts",
     "backend/src/utils/response.ts",
-    "backend/src/validators/password.validator.ts"
+    "backend/src/validators/password.validator.ts",
+    "types/src/auth.ts"
   ],
   "concurrency": 4,
   "reporters": ["clear-text", "html", "json"],
