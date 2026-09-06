@@ -630,12 +630,16 @@ export default function AdminUsersPage() {
               onChange={handleNewPasswordChange}
               placeholder="password"
               autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
               className="rounded border px-3 py-2"
             />
             <input
               value={newUsername}
               onChange={handleNewUsernameChange}
               placeholder="username"
+              minLength={1}
+              maxLength={64}
               className="rounded border px-3 py-2"
             />
             <select
@@ -670,6 +674,8 @@ export default function AdminUsersPage() {
                 value={editUsername}
                 onChange={handleEditUsernameChange}
                 placeholder="username"
+                minLength={1}
+                maxLength={64}
                 className="rounded border px-3 py-2"
               />
               <select
@@ -686,6 +692,8 @@ export default function AdminUsersPage() {
                 onChange={handleEditPasswordChange}
                 placeholder="new password (optional)"
                 autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
                 className="rounded border px-3 py-2"
               />
             </div>

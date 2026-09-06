@@ -1,7 +1,12 @@
-import { AUTH_CONSTANTS, USERNAME_PATTERN, JWT_PATTERN } from "@supabase-modular-auth/types";
-import xss from "xss";
+import {
+  emailSchema,
+  JWT_PATTERN,
+  loginPasswordSchema,
+  usernameSchema,
+} from "@supabase-modular-auth/types";
 import { z } from "zod";
-import zxcvbn from "zxcvbn";
+
+import { strongPasswordSchema } from "./password.validator.js";
 
 // Re-export types from shared package
 export type {
@@ -15,52 +20,18 @@ export type {
  * Authentication Input Validators
  *
  * Security features:
- * - XSS sanitization on user inputs
  * - Strong password requirements (zxcvbn score >= 3)
  * - Email format validation
- * - Username format restrictions
+ * - Username normalization and control-character rejection
  * - Input length limits to prevent DoS
  * - Regex pattern validation
  */
 
-// Sanitize string and prevent XSS
-const sanitizeString = (val: string): string => {
-  // XSS sanitization
-  return xss(val.trim());
-};
+const safeEmail = emailSchema;
 
-// Email validation with sanitization
-const safeEmail = z
-  .email("Invalid email format")
-  .transform((val) => sanitizeString(val.toLowerCase()));
+const loginPassword = loginPasswordSchema;
 
-// Custom password strength validator (backend-specific with zxcvbn)
-const strongPassword = z
-  .string()
-  .min(
-    AUTH_CONSTANTS.MIN_PASSWORD_LENGTH,
-    `Password must be at least ${AUTH_CONSTANTS.MIN_PASSWORD_LENGTH} characters`,
-  )
-  .refine(
-    (password) => {
-      const result = zxcvbn(password);
-      return result.score >= 3; // Score 3-4 is strong
-    },
-    {
-      message:
-        "Password is too weak. Use a mix of letters, numbers, and symbols, and avoid common words.",
-    },
-  );
-
-// Basic password validation for login (no strength check - just validate format)
-const loginPassword = z.string().min(1, "Password is required");
-
-// Username validation with strict pattern
-const safeUsername = z
-  .string()
-  .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username must be at least 3 characters")
-  .regex(USERNAME_PATTERN, "Username can only contain letters, numbers, hyphens, and underscores")
-  .transform(sanitizeString);
+const safeUsername = usernameSchema;
 
 // Reset token validation (JWT format check)
 const resetToken = z
@@ -78,14 +49,14 @@ const resetToken = z
 
 /**
  * Registration Schema
- * - Email: required, sanitized, lowercased
- * - Username: optional, alphanumeric with underscores/hyphens
+ * - Email: required, normalized, lowercased
+ * - Username: required, trimmed display name without control characters
  * - Password: required, strong (zxcvbn >= 3)
  */
 export const registerSchema = z.object({
   email: safeEmail,
-  username: safeUsername.optional(),
-  password: strongPassword,
+  username: safeUsername,
+  password: strongPasswordSchema,
 });
 
 /**
@@ -94,10 +65,7 @@ export const registerSchema = z.object({
  * - Password: required, no strength validation (just format)
  */
 export const loginSchema = z.object({
-  email: z
-    .email("Invalid email format")
-    .min(1, "Email is required")
-    .transform((val) => val.toLowerCase().trim()),
+  email: safeEmail,
   password: loginPassword,
 });
 
@@ -115,6 +83,6 @@ export const forgotPasswordSchema = z.object({
  * - Token: required, JWT format
  */
 export const resetPasswordSchema = z.object({
-  password: strongPassword,
+  password: strongPasswordSchema,
   token: resetToken,
 });

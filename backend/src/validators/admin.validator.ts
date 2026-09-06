@@ -8,6 +8,8 @@ import {
 } from "@supabase-modular-auth/types";
 import xss from "xss";
 
+import { strongPasswordSchema } from "./password.validator.js";
+
 const sanitize = (value: string): string => xss(value.trim());
 
 export const listUsersQuerySchema = adminListUsersQuerySchema.transform((input) => ({
@@ -16,17 +18,23 @@ export const listUsersQuerySchema = adminListUsersQuerySchema.transform((input) 
   filterRole: input.filterRole ? sanitize(input.filterRole) : undefined,
 }));
 
-export const createUserBodySchema = adminCreateUserSchema.transform((input) => ({
-  ...input,
-  username: input.username ? sanitize(input.username) : undefined,
-  role: sanitize(input.role),
-}));
+export const createUserBodySchema = adminCreateUserSchema
+  .extend({
+    password: strongPasswordSchema,
+  })
+  .transform((input) => ({
+    ...input,
+    role: sanitize(input.role),
+  }));
 
-export const updateUserBodySchema = adminUpdateUserSchema.transform((input) => ({
-  ...input,
-  username: typeof input.username === "string" ? sanitize(input.username) : input.username,
-  role: input.role ? sanitize(input.role) : undefined,
-}));
+export const updateUserBodySchema = adminUpdateUserSchema
+  .extend({
+    password: strongPasswordSchema.optional(),
+  })
+  .transform((input) => ({
+    ...input,
+    role: input.role ? sanitize(input.role) : undefined,
+  }));
 
 export const banUserBodySchema = adminBanUserSchema.transform((input) => ({
   ...input,

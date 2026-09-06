@@ -139,6 +139,8 @@ export default function ResetPasswordPage() {
             onChange={handlePasswordChange}
             required
             minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
             disabled={loading}
             error={fieldErrors.password}
           />
@@ -150,6 +152,8 @@ export default function ResetPasswordPage() {
             onChange={handleConfirmPasswordChange}
             required
             minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
             disabled={loading}
             error={fieldErrors.confirmPassword}
             showMismatch={showMismatchError}
