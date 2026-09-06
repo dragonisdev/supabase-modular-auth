@@ -34,7 +34,7 @@ services:
       CSRF_COOKIE_SECURE: "true"
       NODE_ENV: production
       PORT: "3000"
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_TCP_CONNECTION_URL: ${REDIS_TCP_CONNECTION_URL:-redis://redis:6379}
     expose:
       - "3000"
     healthcheck:

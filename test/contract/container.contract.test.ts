@@ -73,8 +73,8 @@ describe("container contract", () => {
       expect(compose.services?.redis?.networks).toEqual(["rate-limit"]);
       expect(compose.services?.backend?.networks).toContain("rate-limit");
       expect(compose.services?.frontend?.networks).not.toContain("rate-limit");
-      expect(compose.services?.backend?.environment?.REDIS_URL).toBe(
-        "${REDIS_URL:-redis://redis:6379}",
+      expect(compose.services?.backend?.environment?.REDIS_TCP_CONNECTION_URL).toBe(
+        "${REDIS_TCP_CONNECTION_URL:-redis://redis:6379}",
       );
       expect(compose.networks?.["rate-limit"]?.internal).toBe(true);
     }
