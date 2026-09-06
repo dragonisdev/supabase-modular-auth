@@ -195,7 +195,7 @@ export const rateLimitStoreService: RateLimitStoreService = new RateLimitStoreSe
   connectTimeoutMs: config.REDIS_CONNECT_TIMEOUT_MS,
   keyPrefix: config.REDIS_KEY_PREFIX,
   pingIntervalMs: config.REDIS_PING_INTERVAL_MS,
-  ...(config.REDIS_URL ? { redisUrl: config.REDIS_URL } : {}),
+  ...(config.REDIS_TCP_CONNECTION_URL ? { redisUrl: config.REDIS_TCP_CONNECTION_URL } : {}),
   ...(config.UPSTASH_REDIS_REST_URL ? { restUrl: config.UPSTASH_REDIS_REST_URL } : {}),
   ...(config.UPSTASH_REDIS_REST_TOKEN ? { restToken: config.UPSTASH_REDIS_REST_TOKEN } : {}),
   restTimeoutMs: config.REDIS_REST_TIMEOUT_MS,

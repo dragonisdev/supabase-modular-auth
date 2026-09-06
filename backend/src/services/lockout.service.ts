@@ -22,7 +22,7 @@ interface LockoutRecord {
  * @example Redis implementation for production:
  * ```
  * import Redis from 'ioredis';
- * const redis = new Redis(process.env.REDIS_URL);
+ * const redis = new Redis(process.env.REDIS_TCP_CONNECTION_URL);
  * // Use redis.incr(), redis.expire() for atomic operations
  * ```
  */

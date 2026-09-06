@@ -36,7 +36,7 @@ services:
       FRONTEND_URL: http://localhost:3001
       NODE_ENV: development
       PORT: "3000"
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_TCP_CONNECTION_URL: ${REDIS_TCP_CONNECTION_URL:-redis://redis:6379}
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:

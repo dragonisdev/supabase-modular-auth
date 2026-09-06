@@ -77,7 +77,7 @@ const baseEnvSchema = z.object({
     })
     .optional()
     .default(5000),
-  REDIS_URL: z
+  REDIS_TCP_CONNECTION_URL: z
     .url()
     .refine((value) => ["redis:", "rediss:"].includes(new URL(value).protocol), {
       message: "Must use the redis:// or rediss:// protocol",
@@ -177,8 +177,8 @@ try {
       );
     }
 
-    if (config.REDIS_TRANSPORT === "tcp" && !config.REDIS_URL) {
-      errors.push("REDIS_URL is required in production for shared rate limiting");
+    if (config.REDIS_TRANSPORT === "tcp" && !config.REDIS_TCP_CONNECTION_URL) {
+      errors.push("REDIS_TCP_CONNECTION_URL is required in production for shared rate limiting");
     }
 
     // Check for common development values in production
