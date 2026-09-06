@@ -43,16 +43,16 @@ const hasDisallowedUsernameCharacter = (value: string): boolean =>
 
 export const usernameSchema = z
   .string()
+  .refine((value) => !hasDisallowedUsernameCharacter(value), {
+    message: "Username cannot contain invisible, control, or nonstandard whitespace characters",
+  })
   .trim()
   .normalize("NFC")
   .min(AUTH_CONSTANTS.MIN_USERNAME_LENGTH, "Username is required")
   .max(
     AUTH_CONSTANTS.MAX_USERNAME_LENGTH,
     `Username cannot exceed ${AUTH_CONSTANTS.MAX_USERNAME_LENGTH} characters`,
-  )
-  .refine((value) => !hasDisallowedUsernameCharacter(value), {
-    message: "Username cannot contain invisible, control, or nonstandard whitespace characters",
-  });
+  );
 
 export const resetTokenSchema = z
   .string()

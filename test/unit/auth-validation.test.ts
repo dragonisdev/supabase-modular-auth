@@ -66,12 +66,14 @@ describe("authentication input validation", () => {
   it("rejects empty, invisible, control-character, nonstandard-whitespace, and oversized display names", () => {
     expect(usernameSchema.safeParse("   ").success).toBe(false);
     expect(usernameSchema.safeParse("Ada\nLovelace").success).toBe(false);
+    expect(usernameSchema.safeParse("Ada\n").success).toBe(false);
     expect(usernameSchema.safeParse("\u200B").success).toBe(false);
     expect(usernameSchema.safeParse("Ada\u200DLovelace").success).toBe(false);
     expect(usernameSchema.safeParse("\u202Eadmin").success).toBe(false);
     expect(usernameSchema.safeParse("\u2800").success).toBe(false);
     expect(usernameSchema.safeParse("\u3164").success).toBe(false);
     expect(usernameSchema.safeParse("Ada\u00A0Lovelace").success).toBe(false);
+    expect(usernameSchema.safeParse("\u00A0Ada").success).toBe(false);
     expect(
       usernameSchema.safeParse("a".repeat(AUTH_CONSTANTS.MAX_USERNAME_LENGTH + 1)).success,
     ).toBe(false);
