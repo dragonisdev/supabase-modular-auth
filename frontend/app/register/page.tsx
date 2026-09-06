@@ -118,7 +118,7 @@ export default function RegisterPage() {
           <div className="text-center">
             <h2 className="mb-4 text-2xl font-bold text-green-600">Check Your Email</h2>
             <p className="mb-6 text-gray-600">
-              Please check your email to verify your account before logging in.
+              If registration can be completed, please check your email to verify your account.
             </p>
             <Link
               href="/login"
@@ -148,6 +148,7 @@ export default function RegisterPage() {
             value={email}
             onChange={handleEmailChange}
             required
+            autoComplete="email"
             disabled={loading}
             error={fieldErrors.email}
           />
@@ -159,11 +160,12 @@ export default function RegisterPage() {
             value={username}
             onChange={handleUsernameChange}
             required
-            minLength={3}
-            pattern="[a-zA-Z0-9_\-]+"
+            minLength={1}
+            maxLength={64}
+            autoComplete="username"
             disabled={loading}
             error={fieldErrors.username}
-            hint="3 characters minimum, letters, numbers, hyphens, and underscores only"
+            hint="1–64 characters. Spaces and international characters are welcome."
           />
 
           <PasswordInput
@@ -173,6 +175,8 @@ export default function RegisterPage() {
             onChange={handlePasswordChange}
             required
             minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
             disabled={loading}
             error={fieldErrors.password}
           />
@@ -184,6 +188,8 @@ export default function RegisterPage() {
             onChange={handleConfirmPasswordChange}
             required
             minLength={8}
+            maxLength={128}
+            autoComplete="new-password"
             disabled={loading}
             error={fieldErrors.confirmPassword}
             showMismatch={showMismatchError}

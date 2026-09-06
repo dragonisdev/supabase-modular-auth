@@ -4,7 +4,7 @@
 
 `types/src/` exports Zod schemas and response/error types used by both application packages. Generated OpenAPI types live under `types/src/generated/` and are checked for drift in CI.
 
-The backend may add stricter validation than the browser. For example, password strength scoring remains server-side.
+The backend may add stricter validation than the browser. Password strength scoring remains server-side, while usernames are bounded, normalized text that must be contextually output-encoded by every consumer.
 
 ## HTTP contract
 
