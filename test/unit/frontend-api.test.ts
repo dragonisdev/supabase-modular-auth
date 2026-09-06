@@ -1,6 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { api, getErrorMessage, isSessionUnavailable } from "../../frontend/lib/api.ts";
+import {
+  api,
+  getErrorMessage,
+  initCsrf,
+  parseFieldErrors,
+  isSessionUnavailable,
+} from "../../frontend/lib/api.ts";
 
 const jsonResponse = (body: unknown, init?: ResponseInit): Response => {
   const headers = new Headers(init?.headers);
@@ -13,6 +19,109 @@ const jsonResponse = (body: unknown, init?: ResponseInit): Response => {
 };
 
 describe("frontend API client", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it.each([undefined, { cookie: "theme=light" }])(
+    "omits CSRF headers when no token is available: %j",
+    async (document) => {
+      vi.stubGlobal("document", document);
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ success: true }));
+      vi.stubGlobal("fetch", fetchMock);
+      await api.logout();
+      expect(fetchMock.mock.calls[0]?.[1].headers).not.toHaveProperty("X-CSRF-Token");
+      expect(fetchMock.mock.calls[0]?.[1].credentials).toBe("include");
+    },
+  );
+
+  it("initializes CSRF with credentials and tolerates network failure", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(initCsrf()).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith("/auth/csrf-token", { credentials: "include" });
+  });
+
+  it("uses the configured backend origin and encodes admin search values", async () => {
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.example.com");
+    vi.resetModules();
+    const { api: remote } = await import("../../frontend/lib/api.ts");
+    const fetchMock = vi.fn().mockImplementation(async () => jsonResponse({ success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    await remote.admin.listUsers();
+    await remote.admin.listUsers({ search: "Ada & Bob", filterBanned: false });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.example.com/admin/users");
+    const url = new URL(fetchMock.mock.calls[1]?.[0]);
+    expect([...url.searchParams.entries()]).toEqual([
+      ["search", "Ada & Bob"],
+      ["filterBanned", "false"],
+    ]);
+  });
+
+  it.each([
+    [403, "FORBIDDEN"],
+    [429, "RATE_LIMITED"],
+    [200, "SERVICE_UNAVAILABLE"],
+  ] as const)(
+    "preserves fallback meaning for invalid response shape at HTTP %i",
+    async (status, error) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse({ unexpected: true }, { status })),
+      );
+      await expect(api.getMe()).resolves.toMatchObject({ success: false, error });
+    },
+  );
+
+  it("keeps the first field error and routes pathless errors to general", () => {
+    expect(parseFieldErrors()).toEqual({});
+    expect(parseFieldErrors([])).toEqual({});
+    const details = [
+      { path: ["email"], message: "Invalid address", code: "invalid_format" },
+      { path: ["email"], message: "Second error", code: "custom" },
+      { path: [], message: "Try again", code: "custom" },
+    ];
+    expect(parseFieldErrors(details)).toEqual({ email: "Invalid address", general: "Try again" });
+    expect(getErrorMessage({ success: false, message: "", details })).toBe(
+      "Invalid address. Second error. Try again",
+    );
+  });
+
+  it.each([
+    ["AUTH_FAILED", "Invalid email or password."],
+    ["INVALID_CREDENTIALS", "Invalid email or password."],
+    ["EMAIL_NOT_VERIFIED", "Please verify your email before logging in."],
+    ["USER_EXISTS", "An account with this email already exists."],
+    ["USER_NOT_FOUND", "No account found with this email."],
+    ["RATE_LIMITED", "Too many attempts. Please wait a moment and try again."],
+    ["RATE_LIMIT_EXCEEDED", "Too many attempts. Please wait a moment and try again."],
+    ["INVALID_TOKEN", "Your reset link has expired. Please request a new one."],
+    ["TOKEN_EXPIRED", "Your reset link has expired. Please request a new one."],
+  ] as const)("maps %s to an actionable error", (error, message) => {
+    expect(getErrorMessage({ success: false, message: "", error })).toBe(message);
+    expect(isSessionUnavailable({ success: false, message: "", error })).toBe(false);
+  });
+
+  it.each([
+    ["UNAUTHORIZED", "Unauthorized."],
+    ["FORBIDDEN", "You do not have permission to perform this action."],
+    ["VALIDATION_ERROR", "Please check your input and try again."],
+    ["INVALID_INPUT", "Please check your input and try again."],
+    ["SERVICE_UNAVAILABLE", "An error occurred. Please try again."],
+  ] as const)("uses a server message or fallback for %s", (error, fallback) => {
+    expect(getErrorMessage({ success: false, message: "", error })).toBe(fallback);
+    expect(getErrorMessage({ success: false, error, message: "Please retry later" })).toBe(
+      "Please retry later",
+    );
+  });
+
+  it("recognizes connection failure as a temporary session outage", () => {
+    expect(isSessionUnavailable({ success: false, message: "", error: "CONNECTION_FAILED" })).toBe(
+      true,
+    );
+  });
+
   it("always includes credentials and uses the same-origin auth path", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

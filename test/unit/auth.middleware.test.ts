@@ -156,6 +156,52 @@ describe("authenticate middleware", () => {
     expect(vi.mocked(next).mock.calls[0]?.[0]).toMatchObject({ statusCode: 401 });
   });
 
+  it("normalizes unexpected resolution errors without attaching a user", async () => {
+    const request = createRequest({ auth_token: ACCESS_TOKEN });
+    const response = createResponse();
+    const next = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(sessionService, "resolve").mockRejectedValue(new Error("internal failure"));
+
+    await authenticate(request, response.value, next);
+
+    expect(next).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: ErrorCode.AUTH_FAILED,
+        statusCode: 401,
+      }),
+    );
+    expect(next.mock.calls[0]?.[0].message).not.toContain("internal failure");
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it("rejects verification checks without an authenticated user", () => {
+    const response = createResponse();
+    const next = vi.fn();
+    requireVerified(createRequest({}), response.value, next);
+    expect(next).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ statusCode: 401 }));
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("continues anonymously when optional auth throws=%s", async (throws) => {
+    const request = createRequest(throws ? { auth_token: ACCESS_TOKEN } : {});
+    const response = createResponse();
+    const next = vi.fn();
+    const resolve = vi.spyOn(sessionService, "resolve").mockRejectedValue(new Error("unavailable"));
+
+    await optionalAuthenticate(request, response.value, next);
+
+    expect(resolve).toHaveBeenCalledTimes(throws ? 1 : 0);
+    expect(next).toHaveBeenCalledExactlyOnceWith();
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
   it.each([undefined, "", "2026-01-01T00:00:00Z"])(
     "requires a verified email: %s",
     (confirmedAt) => {

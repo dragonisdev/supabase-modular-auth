@@ -110,8 +110,6 @@ describe("authentication input validation", () => {
       `!${validResetToken}`,
       `${validResetToken}!`,
       validResetToken.replace(".", "!"),
-      "a".repeat(9),
-      "a".repeat(2049),
     ]) {
       const result = resetTokenSchema.safeParse(token);
       expect(result.success).toBe(false);
@@ -122,6 +120,26 @@ describe("authentication input validation", () => {
 
     expect(sharedResetPasswordSchema.safeParse({ password: strongPassword }).success).toBe(false);
   });
+
+  it.each([
+    [9, false],
+    [10, true],
+    [2048, true],
+    [2049, false],
+  ] as const)(
+    "checks reset-token length independently of structure at %i characters",
+    (length, accepted) => {
+      const token = `a.b.${"c".repeat(length - 4)}`;
+      expect(resetTokenSchema.safeParse(token).success).toBe(accepted);
+      for (const schema of [sharedResetPasswordSchema, resetPasswordSchema]) {
+        const result = schema.safeParse({ password: strongPassword, token });
+        expect(result.success).toBe(accepted);
+        if (!result.success) {
+          expect(result.error.issues.map((issue) => issue.path)).toEqual([["token"]]);
+        }
+      }
+    },
+  );
 
   it("requires and normalizes the email for password-recovery requests", () => {
     expect(forgotPasswordSchema.parse({ email: " USER@Example.com " }).email).toBe(
