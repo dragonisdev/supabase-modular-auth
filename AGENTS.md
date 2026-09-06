@@ -88,7 +88,7 @@ keep `AGENTS.md` at the repository root for discovery.
 - Auth limiter (default 5/15min).
 - Sensitive limiter for reset/forgot endpoints (half of auth limit, min 3).
 - Production rate-limit counters use Redis and fail closed if the store is unavailable; development/test may deliberately use process memory.
-- Production startup bounds initial Redis retries before listening. Long-lived TCP clients send a configurable Redis `PING`; after a successful connection, Redis reconnects with capped exponential backoff while affected requests fail closed.
+- TCP startup bounds initial Redis retries before listening. Long-lived TCP clients send a configurable Redis `PING`; after a successful connection, Redis reconnects with capped exponential backoff while affected requests fail closed. Upstash REST (`REDIS_TRANSPORT=rest`) uses bounded HTTPS commands and a startup PING, without periodic keepalive or automatic retries of counter writes. Both transports preserve `NOSCRIPT` for script reload.
 - **Lockout** remains in-memory with exponential backoff; move it to shared storage before multi-instance production.
 
 ### OAuth state storage
@@ -192,7 +192,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - `BACKEND_URL` (public OAuth callback origin; use the frontend origin in proxy mode), `PORT`, `NODE_ENV`
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
-- Redis: `REDIS_URL` (required in production), `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` (`0` disables periodic PING)
+- Redis: `REDIS_TRANSPORT` (`tcp` default or `rest`), `REDIS_KEY_PREFIX`. TCP uses `REDIS_URL` (required in production), `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` (`0` disables periodic PING). REST requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, with `REDIS_REST_TIMEOUT_MS` (default 5000).
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 

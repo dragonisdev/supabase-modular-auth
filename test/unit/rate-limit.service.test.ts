@@ -5,6 +5,8 @@ import * as SecurityLogger from "../../backend/src/utils/logger.ts";
 
 interface RedisClientForTest {
   emit(event: string, error: Error): boolean;
+  isReady: boolean;
+  sendCommand(args: string[]): Promise<unknown>;
   options: {
     pingInterval?: number;
     socket: { connectTimeout?: number; keepAlive?: boolean };
@@ -50,5 +52,32 @@ describe("RateLimitStoreService", () => {
       errorName: "Error",
       reason: "ECONNRESET",
     });
+  });
+
+  it("lets the TCP store reload scripts after NOSCRIPT", async () => {
+    const service = new RateLimitStoreService({
+      connectTimeoutMs: 5000,
+      keyPrefix: "test:tcp:",
+      redisUrl: "redis://127.0.0.1:1",
+    });
+    const client = getClient(service);
+    vi.spyOn(client, "isReady", "get").mockReturnValue(true);
+    const command = vi
+      .spyOn(client, "sendCommand")
+      .mockResolvedValueOnce("increment-sha")
+      .mockResolvedValueOnce("get-sha")
+      .mockRejectedValueOnce(new Error("NOSCRIPT script cache cleared"))
+      .mockResolvedValueOnce("new-sha")
+      .mockResolvedValueOnce([1, 60_000]);
+    const store = service.createStore("auth")!;
+    await store.init({ windowMs: 60_000 } as Parameters<typeof store.init>[0]);
+    await expect(store.increment("client")).resolves.toMatchObject({ totalHits: 1 });
+    expect(command).toHaveBeenLastCalledWith([
+      "EVALSHA",
+      "new-sha",
+      "1",
+      "test:tcp:auth:client",
+      "60000",
+    ]);
   });
 });

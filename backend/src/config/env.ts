@@ -7,7 +7,7 @@ if (existsSync(backendEnvFile)) {
   loadEnvFile(backendEnvFile);
 }
 
-const envSchema = z.object({
+const baseEnvSchema = z.object({
   // Supabase
   SUPABASE_URL: z.url(),
   SUPABASE_ANON_KEY: z.string().min(1),
@@ -49,6 +49,34 @@ const envSchema = z.object({
     .transform(Number)
     .optional()
     .default(20), // Stricter for production
+  REDIS_TRANSPORT: z.enum(["tcp", "rest"]).default("tcp"),
+  UPSTASH_REDIS_REST_URL: z
+    .url()
+    .refine(
+      (value) => {
+        const url = new URL(value);
+        return (
+          url.protocol === "https:" &&
+          !url.username &&
+          !url.password &&
+          !url.search &&
+          !url.hash &&
+          url.pathname === "/"
+        );
+      },
+      { message: "Must be an HTTPS origin without credentials, path, query, or fragment" },
+    )
+    .optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().trim().min(1).optional(),
+  REDIS_REST_TIMEOUT_MS: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .refine((value) => value > 0 && value <= 30_000, {
+      message: "Must be between 1 and 30000",
+    })
+    .optional()
+    .default(5000),
   REDIS_URL: z
     .url()
     .refine((value) => ["redis:", "rediss:"].includes(new URL(value).protocol), {
@@ -100,6 +128,20 @@ const envSchema = z.object({
   LOCKOUT_DURATION_MS: z.string().regex(/^\d+$/).transform(Number).optional().default(900000), // 15 minutes
 });
 
+export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
+  if (env.REDIS_TRANSPORT === "rest") {
+    for (const key of ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"] as const) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Required when REDIS_TRANSPORT=rest",
+        });
+      }
+    }
+  }
+});
+
 export type EnvConfig = z.infer<typeof envSchema>;
 
 let config: EnvConfig;
@@ -135,7 +177,7 @@ try {
       );
     }
 
-    if (!config.REDIS_URL) {
+    if (config.REDIS_TRANSPORT === "tcp" && !config.REDIS_URL) {
       errors.push("REDIS_URL is required in production for shared rate limiting");
     }
 
