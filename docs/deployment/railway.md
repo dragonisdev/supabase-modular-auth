@@ -2,6 +2,32 @@
 
 Deploy two services from the same repository and Railway project. Do not set `/frontend` or `/backend` as an isolated root directory: this shared pnpm monorepo requires `types/`, `pnpm-workspace.yaml`, and the root lockfile.
 
+## Watch paths for the shared monorepo
+
+Railway watch paths are configured per service in **Settings → Build → Watch Paths**. Keep each service's root directory at `/`, then include every repository path that can affect that service's root-level pnpm build.
+
+For the backend service, use these patterns, one per line:
+
+```text
+/backend/**
+/types/**
+/package.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+```
+
+For the frontend service, use the equivalent patterns:
+
+```text
+/frontend/**
+/types/**
+/package.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
+```
+
+The backend and frontend both import the shared `@supabase-modular-auth/types` package, so watching only `/backend/**` or `/frontend/**` can incorrectly skip deployments when shared validation or generated types change. Root package manifests and the lockfile are also build inputs. If Railway reports `No changes to watched files`, update the service's watch paths and use **Deploy Latest Commit** to deploy the skipped commit.
+
 ## Redis service
 
 Production needs one Redis database shared by every backend instance. The frontend never receives Redis credentials. Choose one of these supported topologies:
