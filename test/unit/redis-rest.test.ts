@@ -45,7 +45,7 @@ describe("Redis REST transport", () => {
       redirect: "error",
       cache: "no-store",
     });
-    expect(fetchMock.mock.calls[0]![1].signal).not.toBe(fetchMock.mock.calls[1]![1].signal);
+    expect(fetchMock.mock.calls[0][1].signal).not.toBe(fetchMock.mock.calls[1][1].signal);
   });
 
   it.each([
@@ -102,7 +102,7 @@ describe("Redis REST transport", () => {
 
     expect(result.totalHits).toBe(2);
     expect(result.resetTime!.getTime()).toBeGreaterThanOrEqual(before + 45_000);
-    expect(JSON.parse(fetchMock.mock.calls[4]![1].body)).toEqual([
+    expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual([
       "EVALSHA",
       "reloaded-sha",
       "1",
@@ -119,7 +119,9 @@ describe("Redis REST transport", () => {
       vi.stubGlobal(
         "fetch",
         vi.fn(async (_url, init: RequestInit) => {
-          if (unavailable) return Response.json({ error: "unavailable" }, { status: 503 });
+          if (unavailable) {
+            return Response.json({ error: "unavailable" }, { status: 503 });
+          }
           const command: string[] = JSON.parse(init.body as string);
           return Response.json({ result: command[0] === "SCRIPT" ? "script-sha" : [1, 60_000] });
         }),
@@ -139,8 +141,12 @@ describe("Redis REST transport", () => {
     let unavailable = false;
     const fetchMock = vi.fn(async (_url, init: RequestInit) => {
       const command: string[] = JSON.parse(init.body as string);
-      if (unavailable) throw new Error(`network failure ${options.token} ${options.url}`);
-      if (command[0] === "SCRIPT") return Response.json({ result: "script-sha" });
+      if (unavailable) {
+        throw new Error(`network failure ${options.token} ${options.url}`);
+      }
+      if (command[0] === "SCRIPT") {
+        return Response.json({ result: "script-sha" });
+      }
       return Response.json({ result: [++hits, 60_000] });
     });
     vi.stubGlobal("fetch", fetchMock);

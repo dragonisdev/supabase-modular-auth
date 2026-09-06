@@ -179,7 +179,7 @@ export class RateLimitStoreService {
       return await this.client!.sendCommand(args);
     } catch (error) {
       if (error instanceof Error && /^NOSCRIPT(?:\s|$)/.test(error.message)) {
-        throw new Error("NOSCRIPT");
+        throw error;
       }
       SecurityLogger.warn("Redis rate-limit store command failed", {
         transport: this.rest ? "rest" : "tcp",
