@@ -84,6 +84,15 @@ describe("Redis REST transport", () => {
     await expect(sendRedisRestCommand(options, ["PING"])).rejects.toThrow();
   });
 
+  it("normalizes Upstash null replies for rate-limit-redis", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ result: [null, 45_000] })));
+
+    await expect(sendRedisRestCommand(options, ["EVALSHA", "sha", "1", "key"])).resolves.toEqual([
+      false,
+      45_000,
+    ]);
+  });
+
   it("reloads a missing script and retains the scope, count and expiration", async () => {
     const fetchMock = vi
       .fn()

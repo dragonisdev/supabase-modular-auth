@@ -1,7 +1,7 @@
 import { type RedisReply } from "rate-limit-redis";
 import { z } from "zod";
 
-const redisValue = z.union([z.string(), z.number(), z.boolean()]);
+const redisValue = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const replySchema = z.union([
   z.object({ error: z.string() }),
   z.object({ result: z.union([redisValue, z.array(redisValue)]) }),
@@ -15,6 +15,9 @@ export interface RedisRestOptions {
 
 const restError = (code: string): Error =>
   Object.assign(new Error("Redis REST command failed"), { code });
+
+const normalizeRedisReply = (value: z.infer<typeof redisValue>): string | number | boolean =>
+  value === null ? false : value;
 
 // Upstash's REST endpoint accepts the same command arrays as node-redis.
 export const sendRedisRestCommand = async (
@@ -55,5 +58,7 @@ export const sendRedisRestCommand = async (
   if (!response.ok) {
     throw restError(`HTTP_${response.status}`);
   }
-  return reply.result;
+  return Array.isArray(reply.result)
+    ? reply.result.map(normalizeRedisReply)
+    : normalizeRedisReply(reply.result);
 };
