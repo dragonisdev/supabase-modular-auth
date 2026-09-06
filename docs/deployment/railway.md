@@ -4,12 +4,13 @@ Deploy two services from the same repository and Railway project. Do not set `/f
 
 ## Redis service
 
-Production needs one Redis-compatible TCP endpoint shared by every backend instance. The frontend never receives Redis credentials. Choose one of these supported topologies:
+Production needs one Redis database shared by every backend instance. The frontend never receives Redis credentials. Choose one of these supported topologies:
 
-- **Railway private Redis:** Add Railway's Redis template and leave its public TCP proxy disabled. Reference the template's private `REDIS_URL` from the backend.
-- **External managed Redis:** Store the provider's normal TCP `rediss://` connection string as the backend's `REDIS_URL`. Do not use a REST endpoint or REST token. Select a provider region near Railway and configure a distinct `REDIS_KEY_PREFIX` for this application and environment.
+- **Railway private Redis:** Add Railway's Redis template and leave its public TCP proxy disabled. Reference the template's private `REDIS_URL` from the backend's `REDIS_TCP_CONNECTION_URL` variable.
+- **External managed Redis (TCP):** Use `REDIS_TRANSPORT=tcp` (the default) and store the provider's `rediss://` connection string as `REDIS_TCP_CONNECTION_URL`.
+- **Upstash REST (HTTPS):** Use `REDIS_TRANSPORT=rest` and set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` from Upstash's REST connection panel. Use the read/write token; rate limiting writes counters and loads scripts.
 
-Both options use the same backend configuration; no application code is deployed to the Redis provider.
+Select a provider region near Railway and use a distinct `REDIS_KEY_PREFIX` per environment. No application code is deployed to the Redis provider.
 
 ## Backend service
 
@@ -36,14 +37,31 @@ CSRF_COOKIE_SECURE=true
 COOKIE_MAX_AGE_DAYS=7
 TRUST_PROXY=1
 # Railway private Redis:
-REDIS_URL=${{Redis.REDIS_URL}}
+REDIS_TRANSPORT=tcp
+REDIS_TCP_CONNECTION_URL=${{Redis.REDIS_URL}}
 # Or an external TLS Redis provider:
-# REDIS_URL=rediss://default:<password>@<host>:6379
+# REDIS_TCP_CONNECTION_URL=rediss://default:<password>@<host>:6379
+REDIS_PING_INTERVAL_MS=30000
 REDIS_KEY_PREFIX=supabase-saas:rate-limit:production:
 ```
 
 Leave `COOKIE_DOMAIN` unset.
 The checked-in Next.js rewrite path starts with one represented trusted hop at Express. Verify Railway's sanitized `X-Forwarded-For` chain and adjust only from observed headers; never use an unrestricted trust setting on a publicly reachable backend.
+
+`REDIS_PING_INTERVAL_MS` sends a provider-neutral Redis `PING` every 30 seconds to reduce idle TCP socket eviction. It is not a retry or a bypass: connection failures still fail closed with `503` while node-redis reconnects. Set it to `0` only when the provider does not require it. Do not enable Railway Serverless mode for this backend while the periodic ping is enabled, because the outbound traffic keeps the service awake.
+
+To use Upstash REST instead, set these backend variables and redeploy:
+
+```env
+REDIS_TRANSPORT=rest
+UPSTASH_REDIS_REST_URL=https://<your-database>.upstash.io
+UPSTASH_REDIS_REST_TOKEN=<read-write-rest-token>
+REDIS_REST_TIMEOUT_MS=5000
+```
+
+Keep `REDIS_KEY_PREFIX` unchanged when switching transports to the same database so existing quotas remain in effect. REST mode ignores `REDIS_TCP_CONNECTION_URL` and TCP timeout/PING settings and creates no persistent Redis socket or periodic PING timer. It verifies Redis once at startup, then sends bounded HTTPS commands as requests arrive. Failures return `503`; subsequent requests can recover without restarting. There is no automatic fallback to TCP or memory and no automatic retry of a potentially applied counter write. REST removes idle Redis socket management but does not prevent provider outages or quotas. See [Upstash's REST API](https://upstash.com/docs/redis/features/restapi).
+
+After deployment, look for `Rate limiting: shared Redis REST store connected` and verify `/auth/csrf-token` and login after an idle period. `/health` is a liveness check and does not establish Redis availability. To roll back the transport, set `REDIS_TRANSPORT=tcp` with a valid `REDIS_TCP_CONNECTION_URL` and redeploy.
 
 ## Frontend service
 

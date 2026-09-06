@@ -113,4 +113,57 @@ describeWithRedis("Redis rate-limit integration", () => {
       message: "Rate limiting service temporarily unavailable",
     });
   });
+
+  it("shares real Redis counters between TCP and the REST command adapter", async () => {
+    // Emulate the Upstash HTTP envelope while executing commands on CI's real Redis.
+    const bridge = firstService.createStore("bridge")!;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url, init: RequestInit) => {
+        try {
+          const command: string[] = JSON.parse(init.body as string);
+          return Response.json({
+            result: await bridge.sendCommand({ command, isReadOnly: false }),
+          });
+        } catch (error) {
+          return Response.json(
+            { error: error instanceof Error ? error.message : "ERR" },
+            { status: 400 },
+          );
+        }
+      }),
+    );
+    const restService = new RateLimitStoreService({
+      transport: "rest",
+      connectTimeoutMs: 2000,
+      keyPrefix: prefix,
+      restUrl: "https://redis.example.test",
+      restToken: "test-rest-token",
+    });
+    await restService.connect();
+
+    const makeApp = (service: RateLimitStoreService) => {
+      const app = express();
+      app.use(
+        createRateLimiter(
+          "cross-transport",
+          {
+            windowMs: 60_000,
+            max: 2,
+            keyGenerator: () => "same-client",
+          },
+          service,
+        ),
+      );
+      app.get("/limited", (_req, res) => res.sendStatus(200));
+      app.use(errorHandler);
+      return app;
+    };
+    const tcpApp = makeApp(firstService);
+    const restApp = makeApp(restService);
+    expect((await request(tcpApp).get("/limited")).status).toBe(200);
+    expect((await request(restApp).get("/limited")).status).toBe(200);
+    expect((await request(restApp).get("/limited")).status).toBe(429);
+    expect((await request(tcpApp).get("/limited")).status).toBe(429);
+  });
 });
