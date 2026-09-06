@@ -63,7 +63,7 @@
       "fast-uri": "3.1.6",
       "path-to-regexp": "8.4.0",
       "vitest>picomatch": "4.0.7",
-      "qs": "6.15.2"
+      "qs": "6.16.0"
     }
   }
 }
