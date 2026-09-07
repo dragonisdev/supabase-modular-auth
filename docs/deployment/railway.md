@@ -1,10 +1,60 @@
 # Railway deployment
 
-Deploy two services from the same repository and Railway project. Do not set `/frontend` or `/backend` as an isolated root directory: this shared pnpm monorepo requires `types/`, `pnpm-workspace.yaml`, and the root lockfile.
+The repository's reference topology is two services from the same repository
+and Railway project. Do not set `/frontend` or `/backend` as an isolated root
+directory: this shared pnpm monorepo requires `types/`,
+`pnpm-workspace.yaml`, and the root lockfile.
+
+## Current production topology
+
+The production Railway project currently contains the backend service only.
+The frontend is hosted separately and Redis is an external Upstash REST store.
+The backend runs from the repository root with Railpack, listens on Railway's
+injected `PORT` (currently 8080), has one replica, and is allowed to sleep.
+This is the topology captured by [ADR 0002](../decisions/0002-railway-infrastructure-as-code.md).
+
+The checked-in IaC definition intentionally reconciles this existing backend
+service first. It does not create a new frontend or Redis service. Those are
+separate migrations because they would change the live network, cookie, and
+variable topology.
+
+## Railway Infrastructure as Code
+
+[`.railway/railway.ts`](../../.railway/railway.ts) is the single project-level
+definition for the settings currently being migrated. It owns the GitHub
+source, root-context Railpack build, monorepo watch paths, start command,
+`/health` check, replica count, sleep behavior, and restart policy. Runtime
+variables and secrets remain in Railway until a complete production import has
+been reviewed; never commit their values.
+
+Use a current Railway CLI (IaC requires the newer CLI line), then link the
+repository to the production project and environment:
+
+```bash
+railway login
+railway link
+railway config pull
+railway config plan
+railway config apply
+```
+
+Review the pull and plan before applying. Do not use
+`railway config pull --include-variables`, because it decrypts and writes
+variable values into the authoring file. The safe import represents existing
+values with `preserve()`.
+
+Pull requests that change `.railway/**` receive a plan from
+`.github/workflows/railway-config.yml`. Merging the pull request applies the
+reviewed plan. Configure the repository secret `RAILWAY_TOKEN` with a Railway
+project token scoped to the target production environment before enabling the
+workflow.
 
 ## Watch paths for the shared monorepo
 
-Railway watch paths are configured per service in **Settings → Build → Watch Paths**. Keep each service's root directory at `/`, then include every repository path that can affect that service's root-level pnpm build.
+The backend patterns below are declared in IaC and should also be checked in
+**Settings → Build → Watch Paths** until the first successful IaC plan/apply.
+Keep the service root directory at `/`, then include every repository path that
+can affect its root-level pnpm build.
 
 For the backend service, use these patterns, one per line:
 
@@ -28,7 +78,7 @@ For the frontend service, use the equivalent patterns:
 
 The backend and frontend both import the shared `@supabase-modular-auth/types` package, so watching only `/backend/**` or `/frontend/**` can incorrectly skip deployments when shared validation or generated types change. Root package manifests and the lockfile are also build inputs. If Railway reports `No changes to watched files`, update the service's watch paths and use **Deploy Latest Commit** to deploy the skipped commit.
 
-## Redis service
+## Redis provider
 
 Production needs one Redis database shared by every backend instance. The frontend never receives Redis credentials. Choose one of these supported topologies:
 
@@ -42,11 +92,17 @@ Select a provider region near Railway and use a distinct `REDIS_KEY_PREFIX` per 
 
 - Build command: `pnpm --filter @supabase-modular-auth/types build && pnpm --filter @supabase-modular-auth/backend build`
 - Start command: `pnpm --filter @supabase-modular-auth/backend start`
-- `PORT=3000`
 - Healthcheck path: `/health`
-- Keep the service private; a public backend domain is not required.
+- The current Railway deployment listens on the injected `PORT=8080`. Do not
+  pin `PORT=3000` unless the Railway domain target and frontend proxy are
+  changed together.
+- The current backend has a generated public domain because the frontend is
+  hosted separately. A private backend origin is the target for a future
+  same-site frontend migration, not this staged IaC change.
 
 Required values:
+
+For the reference two-service deployment, use these values:
 
 ```env
 NODE_ENV=production
@@ -76,7 +132,8 @@ The checked-in Next.js rewrite path starts with one represented trusted hop at E
 
 `REDIS_PING_INTERVAL_MS` sends a provider-neutral Redis `PING` every 30 seconds to reduce idle TCP socket eviction. It is not a retry or a bypass: connection failures still fail closed with `503` while node-redis reconnects. Set it to `0` only when the provider does not require it. Do not enable Railway Serverless mode for this backend while the periodic ping is enabled, because the outbound traffic keeps the service awake.
 
-To use Upstash REST instead, set these backend variables and redeploy:
+The current production deployment already uses Upstash REST. To use Upstash
+REST in another environment, set these backend variables and redeploy:
 
 ```env
 REDIS_TRANSPORT=rest
@@ -109,4 +166,4 @@ The reference namespace must match the actual Railway service name. Browser clie
 
 After both services deploy, verify the backend logs a successful shared Redis-store connection, then verify registration, confirmation, login, session rotation, logout, reset/verification links, OAuth callback, admin denial for a normal user, and persistent audit logs.
 
-Relevant Railway references: [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [Redis](https://docs.railway.com/databases/redis), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
+Relevant Railway references: [Infrastructure as Code](https://docs.railway.com/infrastructure-as-code), [monorepos](https://docs.railway.com/deployments/monorepo), [private domains](https://docs.railway.com/networking/domains/working-with-domains), [Redis](https://docs.railway.com/databases/redis), [variables](https://docs.railway.com/variables/reference), and [healthchecks](https://docs.railway.com/deployments/healthchecks).
