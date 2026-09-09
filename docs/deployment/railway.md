@@ -49,6 +49,31 @@ reviewed plan. Configure the repository secret `RAILWAY_TOKEN` with a Railway
 project token scoped to the target production environment before enabling the
 workflow.
 
+## Railway agent tooling
+
+This repository includes the repository-local [`use-railway` skill](../../.agents/skills/use-railway/SKILL.md)
+and the official hosted Railway MCP endpoint in [`.mcp.json`](../../.mcp.json).
+The MCP configuration contains only the public endpoint; authentication is
+performed locally by the developer's coding agent and is never committed.
+
+For a new workstation, install or update the Railway CLI, then run:
+
+```bash
+railway setup agent --oauth
+railway login
+```
+
+Restart the coding agent after setup so it discovers the skill and MCP server.
+Use `railway setup agent --remote` when the editor should use Railway's CLI
+proxy transport instead of direct OAuth to the hosted MCP server. Use the
+Railway MCP server for authenticated service/deployment inspection and the
+CLI for checkout-bound commands such as `railway config plan` and
+`railway config apply`.
+
+Never commit `RAILWAY_TOKEN` or any Railway variable value. CI should use a
+project-scoped GitHub Actions secret; interactive agent sessions should use
+OAuth.
+
 ## Watch paths for the shared monorepo
 
 The backend patterns below are declared in IaC and should also be checked in

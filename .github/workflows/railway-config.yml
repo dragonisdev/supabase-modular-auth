@@ -23,6 +23,8 @@ jobs:
 
       - name: Plan Railway changes
         uses: railwayapp/config@9e17d413dbe219f19d62538d9c06b5dbb5e9abf8 # v1
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: "true"
         with:
           command: plan
           railway-token: ${{ secrets.RAILWAY_TOKEN }}
@@ -39,6 +41,8 @@ jobs:
 
       - name: Apply reviewed Railway plan
         uses: railwayapp/config@9e17d413dbe219f19d62538d9c06b5dbb5e9abf8 # v1
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: "true"
         with:
           command: apply
           railway-token: ${{ secrets.RAILWAY_TOKEN }}

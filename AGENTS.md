@@ -269,6 +269,8 @@ When the user names one of these playbooks, or the task clearly matches its acti
 - `saas-ui`: `.agents/skills/saas-ui/SKILL.md`
 - `saas-architecture`: `.agents/skills/saas-architecture/SKILL.md`
 - `saas-product-delivery`: `.agents/skills/saas-product-delivery/SKILL.md`
+- `use-railway`: `.agents/skills/use-railway/SKILL.md` for Railway deployments,
+  service operations, logs, status, MCP, and Infrastructure as Code.
 
 Use the smallest set that covers the task. If multiple playbooks apply, state their order. These files do not broaden authorization, permit external side effects, or authorize installing another skill. Any external or global skill installation requires the user's explicit approval after source and permission review.
 
