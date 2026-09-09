@@ -41,6 +41,51 @@ describe("authenticate middleware", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
+  describe.each([authenticate, optionalAuthenticate])("%s verified metadata", (middleware) => {
+    it.each([
+      [{}, "user", false],
+      [{ role: "admin" }, "admin", true],
+      [{ role: "user", is_admin: true }, "user", true],
+      [{ role: "admin", is_admin: false }, "admin", false],
+      [{ role: 42, is_admin: "true" }, "user", false],
+    ] as const)(
+      "maps app metadata %j without trusting user-editable roles",
+      async (metadata, role, isAdmin) => {
+        const request = createRequest({ auth_token: ACCESS_TOKEN });
+        const response = createResponse();
+        const next = vi.fn();
+        const user = createTestUser({
+          app_metadata: metadata,
+          user_metadata: { username: "Display Name", role: "admin", is_admin: true, banned: true },
+        });
+        vi.spyOn(sessionService, "resolve").mockResolvedValue({
+          status: "authenticated",
+          accessToken: ACCESS_TOKEN,
+          user,
+        });
+
+        await middleware(request, response.value, next);
+
+        expect(request.user).toEqual({
+          id: user.id,
+          email: user.email,
+          email_confirmed_at: user.email_confirmed_at,
+          created_at: user.created_at,
+          username: "Display Name",
+          role,
+          is_admin: isAdmin,
+          banned: false,
+          ban_reason: null,
+          ban_expires_at: null,
+        });
+        expect(request.auth).toEqual({ accessToken: ACCESS_TOKEN, refreshed: false });
+        expect(response.cookie).not.toHaveBeenCalled();
+        expect(response.clearCookie).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledExactlyOnceWith();
+      },
+    );
+  });
+
   it("attaches the verified user and rotates both cookies", async () => {
     const request = createRequest({
       auth_token: ACCESS_TOKEN,
@@ -116,6 +161,8 @@ describe("authenticate middleware", () => {
       code: ErrorCode.AUTH_FAILED,
       statusCode: 401,
     });
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
   });
 
   it.each([
@@ -142,6 +189,10 @@ describe("authenticate middleware", () => {
       ...(banned ? [expect.objectContaining({ statusCode: 401 })] : []),
     );
     expect(request.user?.id).toBe(banned ? undefined : createTestUser().id);
+    expect(request.auth).toEqual(
+      banned ? undefined : { accessToken: ACCESS_TOKEN, refreshed: false },
+    );
+    expect(response.cookie).not.toHaveBeenCalled();
   });
 
   it("does not call Supabase resolution when neither cookie exists", async () => {
@@ -246,6 +297,26 @@ describe("authenticate middleware", () => {
       );
       expect(response.clearCookie).toHaveBeenCalledTimes(cleared);
       expect(response.cookie).toHaveBeenCalledTimes(status === "invalid" ? 0 : 2);
+    },
+  );
+
+  it.each(["unavailable", "invalid"] as const)(
+    "optional auth handles %s without a rotated session",
+    async (status) => {
+      const request = createRequest({ auth_token: ACCESS_TOKEN });
+      const response = createResponse();
+      const next = vi.fn();
+      vi.spyOn(sessionService, "resolve").mockResolvedValue({ status });
+
+      await optionalAuthenticate(request, response.value, next);
+
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      expect(request.user).toBeUndefined();
+      expect(request.auth).toBeUndefined();
+      expect(response.cookie).not.toHaveBeenCalled();
+      expect(response.clearCookie.mock.calls.map(([name]) => name)).toEqual(
+        status === "invalid" ? ["auth_token", "auth_token_refresh"] : [],
+      );
     },
   );
 });
