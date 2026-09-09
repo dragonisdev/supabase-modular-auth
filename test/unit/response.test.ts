@@ -41,22 +41,25 @@ describe("auth cookie helpers", () => {
     );
   });
 
-  it("caps access-cookie lifetime at the configured browser-session lifetime", async () => {
-    const { setAuthCookies } = await import("../../backend/src/utils/response.ts");
-    const response = createResponse();
+  it.each([30 * 24 * 60 * 60, 0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "caps or falls back to browser lifetime for expires_in=%s",
+    async (expires_in) => {
+      const { setAuthCookies } = await import("../../backend/src/utils/response.ts");
+      const response = createResponse();
 
-    setAuthCookies(
-      response as unknown as Parameters<typeof setAuthCookies>[0],
-      createTestSession({ expires_in: 30 * 24 * 60 * 60 }),
-    );
+      setAuthCookies(
+        response as unknown as Parameters<typeof setAuthCookies>[0],
+        createTestSession({ expires_in }),
+      );
 
-    expect(response.cookie).toHaveBeenNthCalledWith(
-      1,
-      "auth_token",
-      expect.any(String),
-      expect.objectContaining({ maxAge: 7 * 24 * 60 * 60 * 1000 }),
-    );
-  });
+      expect(response.cookie).toHaveBeenNthCalledWith(
+        1,
+        "auth_token",
+        expect.any(String),
+        expect.objectContaining({ maxAge: 7 * 24 * 60 * 60 * 1000 }),
+      );
+    },
+  );
 
   it("reads and clears both browser-managed tokens", async () => {
     const { clearAuthCookies, getAuthTokenFromCookies, getRefreshTokenFromCookies } =
@@ -99,7 +102,8 @@ describe("auth cookie helpers", () => {
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.resetModules();
 
-    const { setAuthCookies } = await import("../../backend/src/utils/response.ts");
+    const { setAuthCookies, clearAuthCookies } =
+      await import("../../backend/src/utils/response.ts");
     const response = createResponse();
     const session = createTestSession();
 
@@ -122,5 +126,15 @@ describe("auth cookie helpers", () => {
       expect.any(String),
       expect.objectContaining({ path: "/", secure: true }),
     );
+    clearAuthCookies(response as unknown as Parameters<typeof clearAuthCookies>[0]);
+    expect(response.clearCookie.mock.calls.map(([name]) => String(name)).toSorted()).toEqual([
+      "__Host-auth_token",
+      "__Host-auth_token_refresh",
+      "auth_token",
+      "auth_token_refresh",
+    ]);
+    for (const [, options] of response.clearCookie.mock.calls) {
+      expect(options).toEqual({ httpOnly: true, path: "/", sameSite: "lax", secure: true });
+    }
   });
 });

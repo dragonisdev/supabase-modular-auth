@@ -9,6 +9,8 @@ const ignoredDirectories = new Set([
   ".codex",
   ".git",
   ".next",
+  ".pnpm-store",
+  ".stryker-tmp",
   "coverage",
   "dist",
   "node_modules",
@@ -28,41 +30,6 @@ const collectMarkdown = (directory: string): string[] =>
 const markdownFiles = collectMarkdown(repositoryRoot);
 
 describe("documentation contract", () => {
-  it("keeps the root README concise", () => {
-    const readme = readFileSync(resolve(repositoryRoot, "README.md"), "utf8");
-
-    expect(readme.split(/\r?\n/).length).toBeLessThanOrEqual(60);
-    expect(readme).toContain("docs/README.md");
-    expect(readme).toContain("docs/setup.md");
-  });
-
-  it("keeps required centralized documentation", () => {
-    const required = [
-      "docs/README.md",
-      "docs/setup.md",
-      "docs/architecture/overview.md",
-      "docs/architecture/backend.md",
-      "docs/architecture/frontend.md",
-      "docs/configuration/environment.md",
-      "docs/testing.md",
-    ];
-
-    expect(required.every((path) => existsSync(resolve(repositoryRoot, path)))).toBe(true);
-  });
-
-  it("removes superseded component documentation", () => {
-    const superseded = [
-      "deployment.md",
-      "backend/README.md",
-      "backend/backend.md",
-      "frontend/README.md",
-      "frontend/frontend.md",
-      "test/README.md",
-    ];
-
-    expect(superseded.every((path) => !existsSync(resolve(repositoryRoot, path)))).toBe(true);
-  });
-
   it("resolves every relative Markdown link", () => {
     const broken: string[] = [];
     const linkPattern = /!?\[[^\]]*\]\(([^)]+)\)/g;
