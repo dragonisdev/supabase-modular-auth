@@ -19,6 +19,7 @@
 logs/
 *.log
 coverage/
+.stryker-tmp/
 
 # OS
 Thumbs.db

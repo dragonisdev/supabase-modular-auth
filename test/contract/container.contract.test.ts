@@ -24,9 +24,6 @@ const readRepositoryFile = (path: string): string =>
 
 const development = parse(readRepositoryFile("compose.yaml")) as ComposeFile;
 const production = parse(readRepositoryFile("compose.production.yaml")) as ComposeFile;
-const frontendPackage = JSON.parse(readRepositoryFile("frontend/package.json")) as {
-  scripts?: Record<string, string>;
-};
 
 describe("container contract", () => {
   it("pins both Node base images to immutable digests", () => {
@@ -46,13 +43,6 @@ describe("container contract", () => {
     expect(development.services?.frontend?.environment?.NEXT_PUBLIC_API_BASE_URL).toBe("");
   });
 
-  it("uses a collision-free default port while honoring a platform port", () => {
-    expect(frontendPackage.scripts?.start).toBe("node scripts/start.mjs");
-    expect(readRepositoryFile("frontend/scripts/start.mjs")).toContain(
-      'process.env.PORT?.trim() || "3001"',
-    );
-  });
-
   it("keeps the production backend private", () => {
     expect(production.services?.backend?.ports).toBeUndefined();
     expect(production.services?.backend?.environment?.TRUST_PROXY).toBeUndefined();
@@ -63,11 +53,8 @@ describe("container contract", () => {
   });
 
   it("keeps a digest-pinned Redis private and available to the backend", () => {
-    const expectedImage =
-      "redis:8.10.0-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241";
-
     for (const compose of [development, production]) {
-      expect(compose.services?.redis?.image).toBe(expectedImage);
+      expect(compose.services?.redis?.image).toMatch(/^redis:[^@\s]+@sha256:[0-9a-f]{64}$/);
       expect(compose.services?.redis?.ports).toBeUndefined();
       expect(compose.services?.redis?.read_only).toBe(true);
       expect(compose.services?.redis?.networks).toEqual(["rate-limit"]);

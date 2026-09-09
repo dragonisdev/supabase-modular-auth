@@ -1,7 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   authenticate,
+  optionalAuthenticate,
+  requireVerified,
   type AuthenticatedRequest,
 } from "../../backend/src/middleware/auth.middleware.ts";
 import sessionService from "../../backend/src/services/session.service.ts";
@@ -39,8 +41,49 @@ describe("authenticate middleware", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  describe.each([authenticate, optionalAuthenticate])("%s verified metadata", (middleware) => {
+    it.each([
+      [{}, "user", false],
+      [{ role: "admin" }, "admin", true],
+      [{ role: "user", is_admin: true }, "user", true],
+      [{ role: "admin", is_admin: false }, "admin", false],
+      [{ role: 42, is_admin: "true" }, "user", false],
+    ] as const)(
+      "maps app metadata %j without trusting user-editable roles",
+      async (metadata, role, isAdmin) => {
+        const request = createRequest({ auth_token: ACCESS_TOKEN });
+        const response = createResponse();
+        const next = vi.fn();
+        const user = createTestUser({
+          app_metadata: metadata,
+          user_metadata: { username: "Display Name", role: "admin", is_admin: true, banned: true },
+        });
+        vi.spyOn(sessionService, "resolve").mockResolvedValue({
+          status: "authenticated",
+          accessToken: ACCESS_TOKEN,
+          user,
+        });
+
+        await middleware(request, response.value, next);
+
+        expect(request.user).toEqual({
+          id: user.id,
+          email: user.email,
+          email_confirmed_at: user.email_confirmed_at,
+          created_at: user.created_at,
+          username: "Display Name",
+          role,
+          is_admin: isAdmin,
+          banned: false,
+          ban_reason: null,
+          ban_expires_at: null,
+        });
+        expect(request.auth).toEqual({ accessToken: ACCESS_TOKEN, refreshed: false });
+        expect(response.cookie).not.toHaveBeenCalled();
+        expect(response.clearCookie).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledExactlyOnceWith();
+      },
+    );
   });
 
   it("attaches the verified user and rotates both cookies", async () => {
@@ -74,18 +117,26 @@ describe("authenticate middleware", () => {
     expect(next).toHaveBeenCalledWith();
   });
 
-  it("returns a retryable service error without clearing cookies", async () => {
+  it("persists rotated tokens even when their verification is temporarily unavailable", async () => {
     const request = createRequest({ auth_token: ACCESS_TOKEN, auth_token_refresh: REFRESH_TOKEN });
     const response = createResponse();
     const next = vi.fn() as unknown as AuthenticateNext;
     vi.spyOn(sessionService, "resolve").mockResolvedValue({
       error: Object.assign(new Error("fetch failed"), { status: 503 }),
+      refreshedSession: createTestSession(),
       status: "unavailable",
     });
 
     await authenticate(request, response.value, next);
 
     expect(response.clearCookie).not.toHaveBeenCalled();
+    expect(response.cookie).toHaveBeenCalledWith(
+      "auth_token",
+      ROTATED_ACCESS_TOKEN,
+      expect.any(Object),
+    );
+    expect(response.cookie).toHaveBeenCalledTimes(2);
+    expect(request.user).toBeUndefined();
     expect(next).toHaveBeenCalledOnce();
     expect(vi.mocked(next).mock.calls[0]?.[0]).toMatchObject({
       code: ErrorCode.SERVICE_UNAVAILABLE,
@@ -97,32 +148,51 @@ describe("authenticate middleware", () => {
     const request = createRequest({ auth_token: ACCESS_TOKEN, auth_token_refresh: REFRESH_TOKEN });
     const response = createResponse();
     const next = vi.fn() as unknown as AuthenticateNext;
-    vi.spyOn(sessionService, "resolve").mockResolvedValue({ status: "invalid" });
+    vi.spyOn(sessionService, "resolve").mockResolvedValue({
+      status: "invalid",
+      refreshedSession: createTestSession(),
+    });
 
     await authenticate(request, response.value, next);
 
     expect(response.clearCookie).toHaveBeenCalledTimes(2);
+    expect(response.cookie).not.toHaveBeenCalled();
     expect(vi.mocked(next).mock.calls[0]?.[0]).toMatchObject({
       code: ErrorCode.AUTH_FAILED,
       statusCode: 401,
     });
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
   });
 
-  it("blocks a banned user and clears the browser session", async () => {
+  it.each([
+    [undefined, true],
+    ["invalid-date", true],
+    ["2026-01-01T00:00:00.001Z", true],
+    ["2026-01-01T00:00:00.000Z", false],
+    ["2025-12-31T23:59:59.999Z", false],
+  ])("enforces ban expiry at %s", async (expiresAt, banned) => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-01-01T00:00:00.000Z"));
     const request = createRequest({ auth_token: ACCESS_TOKEN });
     const response = createResponse();
     const next = vi.fn() as unknown as AuthenticateNext;
     vi.spyOn(sessionService, "resolve").mockResolvedValue({
       accessToken: ACCESS_TOKEN,
       status: "authenticated",
-      user: createTestUser({ app_metadata: { banned: true } }),
+      user: createTestUser({ app_metadata: { banned: true, ban_expires_at: expiresAt } }),
     });
 
     await authenticate(request, response.value, next);
 
-    expect(response.clearCookie).toHaveBeenCalledTimes(2);
-    expect(request.user).toBeUndefined();
-    expect(vi.mocked(next).mock.calls[0]?.[0]).toMatchObject({ statusCode: 401 });
+    expect(response.clearCookie).toHaveBeenCalledTimes(banned ? 2 : 0);
+    expect(next).toHaveBeenCalledWith(
+      ...(banned ? [expect.objectContaining({ statusCode: 401 })] : []),
+    );
+    expect(request.user?.id).toBe(banned ? undefined : createTestUser().id);
+    expect(request.auth).toEqual(
+      banned ? undefined : { accessToken: ACCESS_TOKEN, refreshed: false },
+    );
+    expect(response.cookie).not.toHaveBeenCalled();
   });
 
   it("does not call Supabase resolution when neither cookie exists", async () => {
@@ -136,4 +206,117 @@ describe("authenticate middleware", () => {
     expect(resolveSpy).not.toHaveBeenCalled();
     expect(vi.mocked(next).mock.calls[0]?.[0]).toMatchObject({ statusCode: 401 });
   });
+
+  it("normalizes unexpected resolution errors without attaching a user", async () => {
+    const request = createRequest({ auth_token: ACCESS_TOKEN });
+    const response = createResponse();
+    const next = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(sessionService, "resolve").mockRejectedValue(new Error("internal failure"));
+
+    await authenticate(request, response.value, next);
+
+    expect(next).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        code: ErrorCode.AUTH_FAILED,
+        statusCode: 401,
+      }),
+    );
+    expect(next.mock.calls[0]?.[0].message).not.toContain("internal failure");
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it("rejects verification checks without an authenticated user", () => {
+    const response = createResponse();
+    const next = vi.fn();
+    requireVerified(createRequest({}), response.value, next);
+    expect(next).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ statusCode: 401 }));
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("continues anonymously when optional auth throws=%s", async (throws) => {
+    const request = createRequest(throws ? { auth_token: ACCESS_TOKEN } : {});
+    const response = createResponse();
+    const next = vi.fn();
+    const resolve = vi.spyOn(sessionService, "resolve").mockRejectedValue(new Error("unavailable"));
+
+    await optionalAuthenticate(request, response.value, next);
+
+    expect(resolve).toHaveBeenCalledTimes(throws ? 1 : 0);
+    expect(next).toHaveBeenCalledExactlyOnceWith();
+    expect(request.user).toBeUndefined();
+    expect(request.auth).toBeUndefined();
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "", "2026-01-01T00:00:00Z"])(
+    "requires a verified email: %s",
+    (confirmedAt) => {
+      const request = createRequest({});
+      const response = createResponse();
+      const next = vi.fn();
+      request.user = { id: "user", email_confirmed_at: confirmedAt };
+
+      requireVerified(request, response.value, next);
+
+      expect(next).toHaveBeenCalledExactlyOnceWith(
+        ...(confirmedAt ? [] : [expect.objectContaining({ statusCode: 401 })]),
+      );
+      expect(response.clearCookie).toHaveBeenCalledTimes(confirmedAt ? 0 : 2);
+    },
+  );
+
+  it.each([
+    ["authenticated", false, true, 0],
+    ["authenticated", true, false, 2],
+    ["unavailable", false, false, 0],
+    ["invalid", false, false, 2],
+  ] as const)(
+    "optional auth handles %s / banned=%s without blocking the request",
+    async (status, banned, attached, cleared) => {
+      const request = createRequest({ auth_token_refresh: REFRESH_TOKEN });
+      const response = createResponse();
+      const next = vi.fn();
+      vi.spyOn(sessionService, "resolve").mockResolvedValue({
+        status,
+        accessToken: ROTATED_ACCESS_TOKEN,
+        refreshedSession: createTestSession(),
+        user: createTestUser({ app_metadata: { banned } }),
+      });
+
+      await optionalAuthenticate(request, response.value, next);
+
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      expect(request.user?.id).toBe(attached ? createTestUser().id : undefined);
+      expect(request.auth).toEqual(
+        attached ? { accessToken: ROTATED_ACCESS_TOKEN, refreshed: true } : undefined,
+      );
+      expect(response.clearCookie).toHaveBeenCalledTimes(cleared);
+      expect(response.cookie).toHaveBeenCalledTimes(status === "invalid" ? 0 : 2);
+    },
+  );
+
+  it.each(["unavailable", "invalid"] as const)(
+    "optional auth handles %s without a rotated session",
+    async (status) => {
+      const request = createRequest({ auth_token: ACCESS_TOKEN });
+      const response = createResponse();
+      const next = vi.fn();
+      vi.spyOn(sessionService, "resolve").mockResolvedValue({ status });
+
+      await optionalAuthenticate(request, response.value, next);
+
+      expect(next).toHaveBeenCalledExactlyOnceWith();
+      expect(request.user).toBeUndefined();
+      expect(request.auth).toBeUndefined();
+      expect(response.cookie).not.toHaveBeenCalled();
+      expect(response.clearCookie.mock.calls.map(([name]) => name)).toEqual(
+        status === "invalid" ? ["auth_token", "auth_token_refresh"] : [],
+      );
+    },
+  );
 });
