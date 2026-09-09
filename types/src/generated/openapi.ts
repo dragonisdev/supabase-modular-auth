@@ -387,7 +387,7 @@ export interface components {
         RegisterRequest: {
             /** Format: email */
             email: string;
-            /** @description Trimmed display name. Control characters are rejected. */
+            /** @description Trimmed, NFC-normalized display name. Invisible, control, and nonstandard whitespace characters are rejected. */
             username: string;
             /**
              * Format: password
@@ -490,7 +490,7 @@ export interface components {
              * @description Must also pass the backend zxcvbn score of at least 3.
              */
             password: string;
-            /** @description Trimmed display name. Control characters are rejected. */
+            /** @description Trimmed, NFC-normalized display name. Invisible, control, and nonstandard whitespace characters are rejected. */
             username?: string;
             role?: components["schemas"]["AdminRole"];
             /** @default false */
@@ -499,7 +499,7 @@ export interface components {
         AdminUpdateUserRequest: {
             /** Format: email */
             email?: string;
-            /** @description Trimmed display name. Control characters are rejected. */
+            /** @description Trimmed, NFC-normalized display name. Invisible, control, and nonstandard whitespace characters are rejected. */
             username?: string | null;
             role?: components["schemas"]["AdminRole"];
             isAdmin?: boolean;

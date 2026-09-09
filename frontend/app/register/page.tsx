@@ -165,7 +165,6 @@ export default function RegisterPage() {
             autoComplete="username"
             disabled={loading}
             error={fieldErrors.username}
-            hint="1–64 characters. Spaces and international characters are welcome."
           />
 
           <PasswordInput
