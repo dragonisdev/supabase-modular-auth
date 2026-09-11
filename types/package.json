@@ -23,5 +23,5 @@
     "@typescript/native-preview": "latest",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@12.3.4"
+  "packageManager": "pnpm@12.4.1"
 }
