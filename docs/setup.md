@@ -11,7 +11,7 @@ Only Next.js needs to be public. Express remains the security boundary and shoul
 ## Prerequisites
 
 - Node.js 24, or Node.js 22.18+
-- pnpm 10.32.1
+- pnpm 12.4.1
 - A dedicated Supabase project
 - Docker Engine with the Compose plugin for the container workflow
 - A public domain and HTTPS before production

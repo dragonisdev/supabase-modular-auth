@@ -6,7 +6,7 @@ The browser never talks to Supabase directly. Next.js proxies same-origin API re
 
 ## Quick start
 
-Requires Node.js 24 (or Node.js 22.18+) and pnpm 10.32.1.
+Requires Node.js 24 (or Node.js 22.18+) and pnpm 12.4.1.
 
 ```bash
 pnpm install --frozen-lockfile

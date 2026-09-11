@@ -8,7 +8,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /workspace
 
-RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+RUN corepack enable && corepack prepare pnpm@12.4.1 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/package.json
