@@ -13,6 +13,7 @@ import { createRateLimiter } from "./middleware/rate-limit.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { createAdminRoutes } from "./routes/admin.routes.js";
 import { createAuthRoutes } from "./routes/auth.routes.js";
+import { createBillingRoutes } from "./routes/billing.routes.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 /**
@@ -151,6 +152,13 @@ class App {
       }),
     );
 
+    // Stripe verifies webhook signatures against the exact request bytes.
+    // Parse only this path as raw data before the general JSON parser.
+    this.app.use(
+      "/billing/webhook",
+      express.raw({ limit: config.STRIPE_WEBHOOK_MAX_SIZE, type: "application/json" }),
+    );
+
     // Body parsing with strict size limits
     this.app.use(
       express.json({
@@ -222,8 +230,10 @@ class App {
     // API routes
     const authRoutes = createAuthRoutes();
     const adminRoutes = createAdminRoutes();
+    const billingRoutes = createBillingRoutes();
     this.app.use("/auth", authRoutes);
     this.app.use("/admin", adminRoutes);
+    this.app.use("/billing", billingRoutes);
 
     // 404 handler
     this.app.use(notFoundHandler);

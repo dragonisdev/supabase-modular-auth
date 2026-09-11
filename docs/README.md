@@ -17,6 +17,7 @@ Start with [setup](setup.md), then use the focused guides below.
 - [Database migrations](database/migrations.md)
 - [Admin access](operations/admin-access.md)
 - [Testing](testing.md)
+- [Stripe Checkout smoke test](billing/stripe-smoke-test.md)
 - [Railway deployment](deployment/railway.md)
 
 ## Project records

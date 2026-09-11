@@ -17,6 +17,7 @@ tags:
   - name: Health
   - name: Authentication
   - name: Administration
+  - name: Billing
 paths:
   /health:
     get:
@@ -251,6 +252,68 @@ paths:
           $ref: "#/components/responses/CurrentUserSuccess"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/test-checkout:
+    post:
+      operationId: createStripeCheckoutTest
+      summary: Create a Stripe-hosted Checkout smoke test
+      description: |
+        Creates a one-time Checkout Session using a configured Stripe test Price.
+        This endpoint does not persist billing state or grant product access.
+      tags: [Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      responses:
+        "201":
+          $ref: "#/components/responses/StripeCheckoutTestCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/webhook:
+    post:
+      operationId: verifyStripeWebhook
+      summary: Verify a Stripe Checkout webhook
+      description: |
+        Verifies the Stripe-Signature header against the exact raw request body.
+        The smoke test logs verified events but does not fulfill a product purchase.
+      tags: [Billing]
+      security:
+        - stripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          $ref: "#/components/responses/StripeWebhookVerified"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "408":
           $ref: "#/components/responses/RequestTimeout"
         "429":
@@ -597,6 +660,11 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
+    stripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
+      description: Stripe webhook signature verified against the endpoint secret and raw body.
 
   parameters:
     UserId:
@@ -762,6 +830,24 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/CurrentUserResponse"
+    StripeCheckoutTestCreated:
+      description: Stripe-hosted Checkout URL created.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StripeCheckoutTestResponse"
+    StripeWebhookVerified:
+      description: Stripe signature verified and event inspected.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StripeWebhookReceiptResponse"
     AdminUsersSuccess:
       description: Paginated users returned.
       headers:
@@ -883,7 +969,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     ServiceUnavailable:
-      description: Session validation is temporarily unavailable; auth cookies are preserved.
+      description: A required upstream service is temporarily unavailable; auth cookies are preserved.
       headers:
         X-Request-ID:
           $ref: "#/components/headers/RequestId"
@@ -1059,6 +1145,37 @@ components:
                 url:
                   type: string
                   format: uri
+    StripeCheckoutTestResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+    StripeWebhookReceiptResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [checkoutCompleted, eventId, eventType, paymentStatus]
+              properties:
+                checkoutCompleted:
+                  type: boolean
+                eventId:
+                  type: string
+                eventType:
+                  type: string
+                paymentStatus:
+                  type: [string, "null"]
     AuthUser:
       type: object
       required:
