@@ -26,3 +26,7 @@ Start with [setup](setup.md), then use the focused guides below.
 - [Redis rate-limiting decision](decisions/0001-redis-rate-limiting.md)
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.
+
+## Contribution workflow
+
+Changes are proposed through pull requests so they can be reviewed before merging.
