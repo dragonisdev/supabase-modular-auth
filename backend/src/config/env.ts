@@ -105,6 +105,13 @@ const baseEnvSchema = z.object({
     .optional()
     .default(30_000),
 
+  // Stripe-hosted Checkout (optional)
+  STRIPE_SECRET_KEY: z.string().trim().startsWith("sk_").min(16).optional(),
+  STRIPE_PRICE_ID: z
+    .string()
+    .trim()
+    .regex(/^price_[A-Za-z0-9]+$/)
+    .optional(),
   // Security
   TRUST_PROXY: z
     .string()
@@ -139,6 +146,14 @@ export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
         });
       }
     }
+  }
+
+  if (env.STRIPE_PRICE_ID && !env.STRIPE_SECRET_KEY) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["STRIPE_SECRET_KEY"],
+      message: "Required when STRIPE_PRICE_ID is configured",
+    });
   }
 });
 

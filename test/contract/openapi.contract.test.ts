@@ -120,6 +120,10 @@ const discoverExpressOperations = (): Set<string> => {
       symbol: "adminRoutes",
       source: readFixture("../../backend/src/routes/admin.routes.ts"),
     },
+    {
+      symbol: "billingRoutes",
+      source: readFixture("../../backend/src/routes/billing.routes.ts"),
+    },
   ];
 
   for (const router of routers) {
@@ -224,7 +228,8 @@ describe("OpenAPI contract", () => {
 
   it("requires access or refresh authentication on protected routes", () => {
     const protectedOperations = getContractOperations().filter(
-      ({ path }) => path === "/auth/me" || path.startsWith("/admin/"),
+      ({ path }) =>
+        path === "/auth/me" || path.startsWith("/admin/") || path === "/billing/checkout",
     );
 
     for (const { method, path, operation } of protectedOperations) {

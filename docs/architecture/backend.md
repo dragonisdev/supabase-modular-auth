@@ -3,7 +3,7 @@
 `backend/` is a JSON-only Express API. The normal request chain is:
 
 ```text
-middleware -> route -> controller -> service -> Supabase
+middleware -> route -> controller -> service -> Supabase or Stripe
 ```
 
 ## Layers
@@ -12,7 +12,7 @@ middleware -> route -> controller -> service -> Supabase
 - `middleware/` applies request IDs, security headers, CORS, body limits, CSRF, authentication, authorization, and normalized errors.
 - `routes/` defines the public, protected, and admin HTTP surface.
 - `controllers/` coordinates validation and response behavior.
-- `services/` owns Supabase clients, session refresh, lockout state, and audit persistence.
+- `services/` owns Supabase and Stripe clients, session refresh, lockout state, and audit persistence.
 - `validators/` adds server-only validation such as stronger password scoring.
 - `utils/` centralizes cookies, logging, errors, and response envelopes.
 
@@ -38,3 +38,4 @@ Rate-limit counters are shared through Redis and therefore remain consistent acr
 ## API and data
 
 The endpoint contract is [OpenAPI](../api.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md).
+The optional [Stripe Checkout integration](../billing/stripe.md) persists no application data and grants no access until a product-specific billing model is added.

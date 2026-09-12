@@ -196,6 +196,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a Stripe-hosted Checkout Session
+         * @description Creates a Checkout Session for the server-configured Stripe Price. The
+         *     Price determines whether Checkout is one-time or recurring. This endpoint
+         *     does not persist billing state or grant product access.
+         */
+        post: operations["createStripeCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -423,6 +445,12 @@ export interface components {
             };
         };
         OAuthUrlResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                /** Format: uri */
+                url: string;
+            };
+        };
+        StripeCheckoutResponse: components["schemas"]["SuccessEnvelope"] & {
             data: {
                 /** Format: uri */
                 url: string;
@@ -668,6 +696,16 @@ export interface components {
                 "application/json": components["schemas"]["CurrentUserResponse"];
             };
         };
+        /** @description Stripe-hosted Checkout URL created. */
+        StripeCheckoutCreated: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["StripeCheckoutResponse"];
+            };
+        };
         /** @description Paginated users returned. */
         AdminUsersSuccess: {
             headers: {
@@ -794,7 +832,7 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description Session validation is temporarily unavailable; auth cookies are preserved. */
+        /** @description A required upstream service is temporarily unavailable; auth cookies are preserved. */
         ServiceUnavailable: {
             headers: {
                 "X-Request-ID": components["headers"]["RequestId"];
@@ -1007,6 +1045,24 @@ export interface operations {
         responses: {
             200: components["responses"]["CurrentUserSuccess"];
             401: components["responses"]["Unauthorized"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createStripeCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: components["responses"]["StripeCheckoutCreated"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             408: components["responses"]["RequestTimeout"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];

@@ -25,6 +25,7 @@ Use exact origins with no trailing slash for `FRONTEND_URL` and `BACKEND_URL`, f
 | General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`                                     | See `backend/.env.example`                                                    |
 | Redis          | `REDIS_TRANSPORT`, `REDIS_TCP_CONNECTION_URL`, `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` | TCP is the default; URL is required for TCP in production                     |
 | Redis REST     | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REDIS_REST_TIMEOUT_MS`                                           | REST requires HTTPS URL and read/write token; deadline defaults to 5000 ms    |
+| Stripe         | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`                                                                                  | Optional; both values are needed to open Checkout                             |
 | Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`                                           | Rate limits use Redis; account lockout remains process-local                  |
 | HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                                                 | Proxy hops must match the real topology                                       |
 
@@ -46,6 +47,10 @@ With `REDIS_TRANSPORT=tcp` (default), `REDIS_TCP_CONNECTION_URL` accepts `redis:
 With `REDIS_TRANSPORT=rest`, both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are required in every environment. The URL must be an HTTPS origin without credentials, path, query, or fragment; the token must have read/write access and remains backend-only. `REDIS_REST_TIMEOUT_MS` bounds each command (1–30000 ms, default 5000), including response-body reading. REST performs a single startup PING and exits on failure. Subsequent commands use HTTPS without a persistent Redis socket or periodic PING. TCP settings are unused in REST mode. Failures remain `503` and are not retried or redirected; the next request tries the store again. Both transports use the same Lua scripts and key prefixes, including script reload after `NOSCRIPT`. Preserve the prefix and database when switching transports to retain current counters.
 
 The periodic ping is a portable mitigation for idle TCP connection eviction, not an availability guarantee. It creates outbound traffic, so do not enable Railway Serverless mode for this backend unless you deliberately accept that it will prevent the service from sleeping.
+
+`STRIPE_SECRET_KEY` is a backend-only secret. `STRIPE_PRICE_ID` identifies the single
+server-selected Price; its recurring setting determines Checkout mode. Test and live credentials
+use the same application code. See [Stripe Checkout](../billing/stripe.md) for the workflow.
 
 ## Rate-limit behavior
 

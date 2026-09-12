@@ -17,6 +17,7 @@ tags:
   - name: Health
   - name: Authentication
   - name: Administration
+  - name: Billing
 paths:
   /health:
     get:
@@ -251,6 +252,38 @@ paths:
           $ref: "#/components/responses/CurrentUserSuccess"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/checkout:
+    post:
+      operationId: createStripeCheckout
+      summary: Create a Stripe-hosted Checkout Session
+      description: |
+        Creates a Checkout Session for the server-configured Stripe Price. The
+        Price determines whether Checkout is one-time or recurring. This endpoint
+        does not persist billing state or grant product access.
+      tags: [Billing]
+      security:
+        - accessCookie: []
+          csrfCookie: []
+          csrfHeader: []
+        - refreshCookie: []
+          csrfCookie: []
+          csrfHeader: []
+      responses:
+        "201":
+          $ref: "#/components/responses/StripeCheckoutCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "408":
           $ref: "#/components/responses/RequestTimeout"
         "429":
@@ -597,7 +630,6 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
-
   parameters:
     UserId:
       name: id
@@ -762,6 +794,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/CurrentUserResponse"
+    StripeCheckoutCreated:
+      description: Stripe-hosted Checkout URL created.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StripeCheckoutResponse"
     AdminUsersSuccess:
       description: Paginated users returned.
       headers:
@@ -883,7 +924,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     ServiceUnavailable:
-      description: Session validation is temporarily unavailable; auth cookies are preserved.
+      description: A required upstream service is temporarily unavailable; auth cookies are preserved.
       headers:
         X-Request-ID:
           $ref: "#/components/headers/RequestId"
@@ -1047,6 +1088,19 @@ components:
                       type: string
                       format: email
     OAuthUrlResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+    StripeCheckoutResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessEnvelope"
         - type: object

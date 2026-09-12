@@ -24,6 +24,10 @@ const nextConfig: NextConfig = {
         destination: `${proxyTarget}/admin/:path*`,
       },
       {
+        source: "/api/billing/:path*",
+        destination: `${proxyTarget}/billing/:path*`,
+      },
+      {
         source: "/health",
         destination: `${proxyTarget}/health`,
       },

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "../../backend/src/app.ts";
 import sessionService from "../../backend/src/services/session.service.ts";
+import stripeService from "../../backend/src/services/stripe.service.ts";
 import SupabaseService from "../../backend/src/services/supabase.service.ts";
 import {
   ACCESS_TOKEN,
@@ -94,6 +95,32 @@ describe("Express security surface", () => {
     );
     expect(rotatedCsrfCookie).toBeTruthy();
     expect(getCookiePair(rotatedCsrfCookie!)).not.toBe(cookiePair);
+  });
+
+  it("requires authentication and CSRF before creating Stripe Checkout", async () => {
+    const { cookiePair, csrfToken } = await csrfPair();
+    const user = createTestUser();
+    vi.spyOn(sessionService, "resolve").mockResolvedValue({
+      accessToken: ACCESS_TOKEN,
+      status: "authenticated",
+      user,
+    });
+    const createCheckout = vi
+      .spyOn(stripeService, "createCheckout")
+      .mockResolvedValue({ url: "https://checkout.stripe.com/test" });
+
+    const response = await request(app)
+      .post("/billing/checkout")
+      .set("Cookie", [cookiePair, `auth_token=${ACCESS_TOKEN}`])
+      .set("X-CSRF-Token", csrfToken)
+      .expect(201);
+
+    expect(createCheckout).toHaveBeenCalledWith({ id: user.id });
+    expect(response.body).toEqual({
+      data: { url: "https://checkout.stripe.com/test" },
+      message: "Stripe Checkout created",
+      success: true,
+    });
   });
 
   it("uses the implicit recovery flow for password reset emails", async () => {

@@ -14,6 +14,8 @@ Express routes
   <-> OpenAPI contract and contract tests
 Express rate limiters
   -> shared Redis counters in production
+Express Stripe adapter
+  -> Stripe-hosted Checkout (optional integration)
 ```
 
 ## Trust boundaries
@@ -22,6 +24,7 @@ Express rate limiters
 - Next.js is a presentation and proxy layer. It does not receive Supabase secrets or make privileged Supabase calls.
 - Express is the application security boundary. It validates every protected session and enforces admin authorization.
 - Supabase is the identity provider and managed data platform. The service-role key exists only in the backend environment.
+- Stripe receives payment details on its hosted page. Express alone holds the secret key and chooses the Price.
 
 ## Package responsibilities
 
@@ -36,6 +39,7 @@ Express rate limiters
 ## Intentional limits
 
 - There is no product-specific schema or branding.
+- The Stripe integration does not yet define a billing, entitlement, or product model.
 - User/admin roles exist, but substantive multi-tenant membership and tenant-owned product tables do not yet exist.
 - Redis coordinates rate-limit counters across instances, but process-local lockout state, OAuth PKCE state, and the audit fallback still limit safe backend scaling to one replica.
 

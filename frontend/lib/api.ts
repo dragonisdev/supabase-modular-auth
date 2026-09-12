@@ -13,10 +13,12 @@ import type {
   LoginResponseData,
   GetMeResponseData,
   GoogleAuthUrlResponseData,
+  StripeCheckoutData,
 } from "@supabase-modular-auth/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const ADMIN_API_PREFIX = API_BASE_URL ? "/admin" : "/api/admin";
+const BILLING_API_PREFIX = API_BASE_URL ? "/billing" : "/api/billing";
 const CSRF_COOKIE_NAME = "csrf_token";
 
 // Re-export types for convenience
@@ -301,6 +303,13 @@ export const api = {
           action: query?.action,
         })}`,
       ),
+  },
+
+  billing: {
+    createCheckout: () =>
+      fetchAPI<StripeCheckoutData>(`${BILLING_API_PREFIX}/checkout`, {
+        method: "POST",
+      }),
   },
 
   // Google OAuth

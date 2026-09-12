@@ -68,6 +68,9 @@ pnpm dev
 
 Open `http://localhost:3001` and verify `http://localhost:3001/health` returns success through the Next.js proxy.
 
+Stripe is optional. To configure hosted Checkout without selecting a product billing model, follow
+the [Stripe Checkout guide](billing/stripe.md). It requires no database migration.
+
 ## Docker Compose development
 
 The Compose stack runs the frontend on port 3001, the backend on port 3000, and an ephemeral Redis used only for rate-limit counters. Redis has no host port and is isolated on an internal network. The stack reads ignored secrets from `backend/.env`; it does not include Supabase itself.
