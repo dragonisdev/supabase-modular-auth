@@ -261,13 +261,14 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /billing/test-checkout:
+  /billing/checkout:
     post:
-      operationId: createStripeCheckoutTest
-      summary: Create a Stripe-hosted Checkout smoke test
+      operationId: createStripeCheckout
+      summary: Create a Stripe-hosted Checkout Session
       description: |
-        Creates a one-time Checkout Session using a configured Stripe test Price.
-        This endpoint does not persist billing state or grant product access.
+        Creates a Checkout Session for the server-configured Stripe Price. The
+        Price determines whether Checkout is one-time or recurring. This endpoint
+        does not persist billing state or grant product access.
       tags: [Billing]
       security:
         - accessCookie: []
@@ -278,42 +279,11 @@ paths:
           csrfHeader: []
       responses:
         "201":
-          $ref: "#/components/responses/StripeCheckoutTestCreated"
+          $ref: "#/components/responses/StripeCheckoutCreated"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "408":
-          $ref: "#/components/responses/RequestTimeout"
-        "429":
-          $ref: "#/components/responses/TooManyRequests"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-        "503":
-          $ref: "#/components/responses/ServiceUnavailable"
-
-  /billing/webhook:
-    post:
-      operationId: verifyStripeWebhook
-      summary: Verify a Stripe Checkout webhook
-      description: |
-        Verifies the Stripe-Signature header against the exact raw request body.
-        The smoke test logs verified events but does not fulfill a product purchase.
-      tags: [Billing]
-      security:
-        - stripeSignature: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        "200":
-          $ref: "#/components/responses/StripeWebhookVerified"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "408":
           $ref: "#/components/responses/RequestTimeout"
         "429":
@@ -660,12 +630,6 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
-    stripeSignature:
-      type: apiKey
-      in: header
-      name: Stripe-Signature
-      description: Stripe webhook signature verified against the endpoint secret and raw body.
-
   parameters:
     UserId:
       name: id
@@ -830,7 +794,7 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/CurrentUserResponse"
-    StripeCheckoutTestCreated:
+    StripeCheckoutCreated:
       description: Stripe-hosted Checkout URL created.
       headers:
         X-Request-ID:
@@ -838,16 +802,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/StripeCheckoutTestResponse"
-    StripeWebhookVerified:
-      description: Stripe signature verified and event inspected.
-      headers:
-        X-Request-ID:
-          $ref: "#/components/headers/RequestId"
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/StripeWebhookReceiptResponse"
+            $ref: "#/components/schemas/StripeCheckoutResponse"
     AdminUsersSuccess:
       description: Paginated users returned.
       headers:
@@ -1145,7 +1100,7 @@ components:
                 url:
                   type: string
                   format: uri
-    StripeCheckoutTestResponse:
+    StripeCheckoutResponse:
       allOf:
         - $ref: "#/components/schemas/SuccessEnvelope"
         - type: object
@@ -1158,24 +1113,6 @@ components:
                 url:
                   type: string
                   format: uri
-    StripeWebhookReceiptResponse:
-      allOf:
-        - $ref: "#/components/schemas/SuccessEnvelope"
-        - type: object
-          required: [data]
-          properties:
-            data:
-              type: object
-              required: [checkoutCompleted, eventId, eventType, paymentStatus]
-              properties:
-                checkoutCompleted:
-                  type: boolean
-                eventId:
-                  type: string
-                eventType:
-                  type: string
-                paymentStatus:
-                  type: [string, "null"]
     AuthUser:
       type: object
       required:

@@ -9,39 +9,27 @@ const required = {
   SUPABASE_URL: "https://project.supabase.co",
 };
 
-const enabled = {
+const configured = {
   ...required,
   STRIPE_SECRET_KEY: "sk_test_example_secret",
-  STRIPE_SMOKE_TEST_ENABLED: "true",
-  STRIPE_TEST_PRICE_ID: "price_example123",
-  STRIPE_WEBHOOK_SECRET: "whsec_example_secret",
+  STRIPE_PRICE_ID: "price_example123",
 };
 
-describe("Stripe smoke-test configuration", () => {
-  it("is disabled by default", () => {
-    expect(envSchema.parse(required).STRIPE_SMOKE_TEST_ENABLED).toBe(false);
+describe("Stripe configuration", () => {
+  it("is optional by default", () => {
+    expect(envSchema.parse(required).STRIPE_SECRET_KEY).toBeUndefined();
   });
 
-  it("requires all provider values when enabled", () => {
-    for (const key of [
-      "STRIPE_SECRET_KEY",
-      "STRIPE_TEST_PRICE_ID",
-      "STRIPE_WEBHOOK_SECRET",
-    ] as const) {
-      expect(envSchema.safeParse({ ...enabled, [key]: undefined }).success).toBe(false);
-    }
-  });
-
-  it("accepts only a test secret for the enabled smoke test", () => {
-    expect(envSchema.safeParse(enabled).success).toBe(true);
-    expect(
-      envSchema.safeParse({ ...enabled, STRIPE_SECRET_KEY: "sk_live_example_secret" }).success,
-    ).toBe(false);
-  });
-
-  it.each(["0", "1.1mb", "2mb", "unbounded"])("rejects unsafe webhook body limit %s", (limit) => {
-    expect(envSchema.safeParse({ ...required, STRIPE_WEBHOOK_MAX_SIZE: limit }).success).toBe(
+  it("requires a secret key when a Price is configured", () => {
+    expect(envSchema.safeParse({ ...configured, STRIPE_SECRET_KEY: undefined }).success).toBe(
       false,
     );
+  });
+
+  it("accepts test and live Stripe secret keys", () => {
+    expect(envSchema.safeParse(configured).success).toBe(true);
+    expect(
+      envSchema.safeParse({ ...configured, STRIPE_SECRET_KEY: "sk_live_example_secret" }).success,
+    ).toBe(true);
   });
 });

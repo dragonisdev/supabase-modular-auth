@@ -196,7 +196,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/billing/test-checkout": {
+    "/billing/checkout": {
         parameters: {
             query?: never;
             header?: never;
@@ -206,32 +206,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create a Stripe-hosted Checkout smoke test
-         * @description Creates a one-time Checkout Session using a configured Stripe test Price.
-         *     This endpoint does not persist billing state or grant product access.
+         * Create a Stripe-hosted Checkout Session
+         * @description Creates a Checkout Session for the server-configured Stripe Price. The
+         *     Price determines whether Checkout is one-time or recurring. This endpoint
+         *     does not persist billing state or grant product access.
          */
-        post: operations["createStripeCheckoutTest"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/billing/webhook": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Verify a Stripe Checkout webhook
-         * @description Verifies the Stripe-Signature header against the exact raw request body.
-         *     The smoke test logs verified events but does not fulfill a product purchase.
-         */
-        post: operations["verifyStripeWebhook"];
+        post: operations["createStripeCheckout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -470,18 +450,10 @@ export interface components {
                 url: string;
             };
         };
-        StripeCheckoutTestResponse: components["schemas"]["SuccessEnvelope"] & {
+        StripeCheckoutResponse: components["schemas"]["SuccessEnvelope"] & {
             data: {
                 /** Format: uri */
                 url: string;
-            };
-        };
-        StripeWebhookReceiptResponse: components["schemas"]["SuccessEnvelope"] & {
-            data: {
-                checkoutCompleted: boolean;
-                eventId: string;
-                eventType: string;
-                paymentStatus: string | null;
             };
         };
         AuthUser: {
@@ -725,23 +697,13 @@ export interface components {
             };
         };
         /** @description Stripe-hosted Checkout URL created. */
-        StripeCheckoutTestCreated: {
+        StripeCheckoutCreated: {
             headers: {
                 "X-Request-ID": components["headers"]["RequestId"];
                 [name: string]: unknown;
             };
             content: {
-                "application/json": components["schemas"]["StripeCheckoutTestResponse"];
-            };
-        };
-        /** @description Stripe signature verified and event inspected. */
-        StripeWebhookVerified: {
-            headers: {
-                "X-Request-ID": components["headers"]["RequestId"];
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": components["schemas"]["StripeWebhookReceiptResponse"];
+                "application/json": components["schemas"]["StripeCheckoutResponse"];
             };
         };
         /** @description Paginated users returned. */
@@ -1089,7 +1051,7 @@ export interface operations {
             503: components["responses"]["ServiceUnavailable"];
         };
     };
-    createStripeCheckoutTest: {
+    createStripeCheckout: {
         parameters: {
             query?: never;
             header?: never;
@@ -1098,32 +1060,9 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            201: components["responses"]["StripeCheckoutTestCreated"];
+            201: components["responses"]["StripeCheckoutCreated"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            408: components["responses"]["RequestTimeout"];
-            429: components["responses"]["TooManyRequests"];
-            500: components["responses"]["InternalServerError"];
-            503: components["responses"]["ServiceUnavailable"];
-        };
-    };
-    verifyStripeWebhook: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            200: components["responses"]["StripeWebhookVerified"];
-            400: components["responses"]["BadRequest"];
             408: components["responses"]["RequestTimeout"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];

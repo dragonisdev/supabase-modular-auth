@@ -13,7 +13,7 @@ import type {
   LoginResponseData,
   GetMeResponseData,
   GoogleAuthUrlResponseData,
-  StripeCheckoutTestData,
+  StripeCheckoutData,
 } from "@supabase-modular-auth/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -306,8 +306,8 @@ export const api = {
   },
 
   billing: {
-    createCheckoutTest: () =>
-      fetchAPI<StripeCheckoutTestData>(`${BILLING_API_PREFIX}/test-checkout`, {
+    createCheckout: () =>
+      fetchAPI<StripeCheckoutData>(`${BILLING_API_PREFIX}/checkout`, {
         method: "POST",
       }),
   },

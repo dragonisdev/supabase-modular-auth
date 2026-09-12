@@ -16,7 +16,7 @@ The frontend is intentionally thin: it **never calls Supabase** directly. All au
 2. **Backend** validates input (Zod), calls Supabase Auth, and issues separate **HttpOnly access and refresh cookies**.
 3. **Protected calls** verify the access token with Supabase on every request and transparently rotate the session when only a valid refresh token remains.
 4. **OAuth** is fully server-side; frontend only redirects to the URL provided by the backend.
-5. **Stripe smoke testing** is backend-driven and sandbox-only; the browser redirects to hosted Checkout and never receives a secret.
+5. **Stripe Checkout** is backend-driven; the browser redirects to the hosted payment page and never receives a secret.
 
 Key backend chain: **Middleware → Routes → Controllers → Services → Supabase/Stripe**.
 
@@ -72,7 +72,6 @@ keep `AGENTS.md` at the repository root for discovery.
 - **Header**: `X-CSRF-Token`
 - **Protected**: all non-GET/HEAD/OPTIONS routes
 - **Excluded**: `/auth/google/callback`, `/health`
-- **Provider exception**: `/billing/webhook` verifies `Stripe-Signature` against the exact raw body instead of browser CSRF.
 - Frontend initializes CSRF via `GET /auth/csrf-token` (see `CsrfProvider`).
 
 ### Cookies & session
@@ -144,7 +143,7 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 ### Protected
 
 - `GET /auth/me`
-- `POST /billing/test-checkout`
+- `POST /billing/checkout`
 - `GET /admin/users`
 - `GET /admin/users/:id`
 - `POST /admin/users/create`
@@ -154,10 +153,6 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /admin/users/:id/unban`
 - `POST /admin/users/bulk`
 - `GET /admin/audit-logs`
-
-### Provider callback
-
-- `POST /billing/webhook` (raw body with a verified Stripe signature; no browser CSRF)
 
 ### Admin authorization
 
@@ -200,7 +195,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
 - Redis: `REDIS_TRANSPORT` (`tcp` default or `rest`), `REDIS_KEY_PREFIX`. TCP uses `REDIS_TCP_CONNECTION_URL` (required in production), `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` (`0` disables periodic PING). REST requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, with `REDIS_REST_TIMEOUT_MS` (default 5000).
-- Stripe smoke test: `STRIPE_SMOKE_TEST_ENABLED`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_TEST_PRICE_ID`, `STRIPE_WEBHOOK_MAX_SIZE`. Live secret keys cannot enable the harness.
+- Stripe: `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` configure hosted Checkout.
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 

@@ -27,7 +27,7 @@ Recommended production and local browser requests are same-origin:
 ## Routes
 
 - Public: `/`, `/register`, `/login`, `/forgot-password`, `/reset-password`, verification/error callbacks.
-- Protected: `/dashboard`, `/logout`, `/billing/test`.
+- Protected: `/dashboard`, `/logout`, `/billing`.
 - Admin UI: `/admin`, `/admin/users`, `/admin/audit`.
 
 Password recovery uses a request-scoped implicit-flow client so the email returns an access token in the URL fragment without relying on process-local PKCE verifier state. The reset page parses the fragment and sends the required access token to Express without persisting it. The verification page only interprets the callback result and redirects the user to login; it does not exchange the fragment with Express.
@@ -36,5 +36,5 @@ Password recovery uses a request-scoped implicit-flow client so the email return
 
 `pnpm --filter @supabase-modular-auth/frontend dev` uses port 3001. Production `next start` honors the platform's `PORT` variable. Keep frontend and backend on the same site through proxying to reduce Safari/ITP cookie failures.
 
-The Stripe test page redirects to Stripe-hosted Checkout using a URL created by Express. It never
+The billing page redirects to Stripe-hosted Checkout using a URL created by Express. It never
 receives a Stripe secret or handles card data.

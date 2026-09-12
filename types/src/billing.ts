@@ -1,10 +1,3 @@
-export interface StripeCheckoutTestData {
+export interface StripeCheckoutData {
   url: string;
-}
-
-export interface StripeWebhookReceiptData {
-  checkoutCompleted: boolean;
-  eventId: string;
-  eventType: string;
-  paymentStatus: string | null;
 }

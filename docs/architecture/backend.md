@@ -21,8 +21,7 @@ middleware -> route -> controller -> service -> Supabase or Stripe
 - Access and refresh tokens are stored in separate HttpOnly cookies.
 - Every protected request validates the user with Supabase; JWT payloads are not trusted without that call.
 - Expired access sessions may rotate through the refresh cookie. Retryable Supabase failures preserve cookies, while terminal authentication failures clear them.
-- Every non-safe HTTP method requires the double-submit CSRF cookie/header pair, except the explicit OAuth callback and signed Stripe webhook.
-- Stripe webhook verification receives the exact raw request bytes before the general JSON parser. A valid provider signature replaces browser CSRF for that one route.
+- Every non-safe HTTP method requires the double-submit CSRF cookie/header pair, except the explicit OAuth callback.
 - Admin access is derived from server-verified Supabase `app_metadata`.
 - Passwords, tokens, cookies, authorization headers, and service keys must never be logged.
 - CORS currently permits only `GET`, `POST`, and `OPTIONS`; add verbs deliberately if routes change.
@@ -39,4 +38,4 @@ Rate-limit counters are shared through Redis and therefore remain consistent acr
 ## API and data
 
 The endpoint contract is [OpenAPI](../api.md), not a duplicated Markdown endpoint list. Database behavior is described in [Contracts and data boundaries](contracts-and-data.md) and [Database migrations](../database/migrations.md).
-The optional [Stripe Checkout smoke test](../billing/stripe-smoke-test.md) persists no application data and grants no access.
+The optional [Stripe Checkout integration](../billing/stripe.md) persists no application data and grants no access until a product-specific billing model is added.

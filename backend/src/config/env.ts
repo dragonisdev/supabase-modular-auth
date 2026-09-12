@@ -7,18 +7,6 @@ if (existsSync(backendEnvFile)) {
   loadEnvFile(backendEnvFile);
 }
 
-const parseByteSize = (value: string): number => {
-  const match = /^(\d+)(b|kb|mb)$/i.exec(value);
-  if (!match) {
-    return Number.NaN;
-  }
-
-  const amount = Number(match[1]);
-  const unit = match[2].toLowerCase();
-  const multiplier = unit === "mb" ? 1024 * 1024 : unit === "kb" ? 1024 : 1;
-  return amount * multiplier;
-};
-
 const baseEnvSchema = z.object({
   // Supabase
   SUPABASE_URL: z.url(),
@@ -117,30 +105,13 @@ const baseEnvSchema = z.object({
     .optional()
     .default(30_000),
 
-  // Stripe Checkout smoke test (disabled unless explicitly configured)
-  STRIPE_SMOKE_TEST_ENABLED: z
-    .string()
-    .transform((value) => value === "true")
-    .optional()
-    .default(false),
+  // Stripe-hosted Checkout (optional)
   STRIPE_SECRET_KEY: z.string().trim().startsWith("sk_").min(16).optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().trim().startsWith("whsec_").min(16).optional(),
-  STRIPE_TEST_PRICE_ID: z
+  STRIPE_PRICE_ID: z
     .string()
     .trim()
     .regex(/^price_[A-Za-z0-9]+$/)
     .optional(),
-  STRIPE_WEBHOOK_MAX_SIZE: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .refine((value) => {
-      const bytes = parseByteSize(value);
-      return Number.isFinite(bytes) && bytes > 0 && bytes <= 1024 * 1024;
-    }, "Must be a positive byte, kb, or mb value no larger than 1mb")
-    .optional()
-    .default("256kb"),
-
   // Security
   TRUST_PROXY: z
     .string()
@@ -177,28 +148,12 @@ export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
     }
   }
 
-  if (env.STRIPE_SMOKE_TEST_ENABLED) {
-    for (const key of [
-      "STRIPE_SECRET_KEY",
-      "STRIPE_WEBHOOK_SECRET",
-      "STRIPE_TEST_PRICE_ID",
-    ] as const) {
-      if (!env[key]) {
-        ctx.addIssue({
-          code: "custom",
-          path: [key],
-          message: "Required when STRIPE_SMOKE_TEST_ENABLED=true",
-        });
-      }
-    }
-
-    if (env.STRIPE_SECRET_KEY && !env.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["STRIPE_SECRET_KEY"],
-        message: "Must be a Stripe test secret when the smoke test is enabled",
-      });
-    }
+  if (env.STRIPE_PRICE_ID && !env.STRIPE_SECRET_KEY) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["STRIPE_SECRET_KEY"],
+      message: "Required when STRIPE_PRICE_ID is configured",
+    });
   }
 });
 

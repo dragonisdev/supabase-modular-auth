@@ -68,8 +68,8 @@ pnpm dev
 
 Open `http://localhost:3001` and verify `http://localhost:3001/health` returns success through the Next.js proxy.
 
-Stripe is optional. To validate hosted Checkout without selecting a production billing model, follow
-the [Stripe Checkout smoke test](billing/stripe-smoke-test.md). It requires no database migration.
+Stripe is optional. To configure hosted Checkout without selecting a product billing model, follow
+the [Stripe Checkout guide](billing/stripe.md). It requires no database migration.
 
 ## Docker Compose development
 

@@ -174,7 +174,7 @@ describe("frontend API client", () => {
     );
   });
 
-  it("uses the billing proxy path and CSRF for the Checkout smoke test", async () => {
+  it("uses the billing proxy path and CSRF for Checkout", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({
         success: true,
@@ -185,10 +185,10 @@ describe("frontend API client", () => {
     vi.stubGlobal("document", { cookie: "csrf_token=csrf-value" });
     vi.stubGlobal("fetch", fetchMock);
 
-    await api.billing.createCheckoutTest();
+    await api.billing.createCheckout();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/billing/test-checkout",
+      "/api/billing/checkout",
       expect.objectContaining({
         credentials: "include",
         headers: expect.objectContaining({ "X-CSRF-Token": "csrf-value" }),

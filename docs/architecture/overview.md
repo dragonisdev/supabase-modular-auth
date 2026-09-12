@@ -15,7 +15,7 @@ Express routes
 Express rate limiters
   -> shared Redis counters in production
 Express Stripe adapter
-  -> Stripe-hosted Checkout and signed webhooks (optional smoke test)
+  -> Stripe-hosted Checkout (optional integration)
 ```
 
 ## Trust boundaries
@@ -24,7 +24,7 @@ Express Stripe adapter
 - Next.js is a presentation and proxy layer. It does not receive Supabase secrets or make privileged Supabase calls.
 - Express is the application security boundary. It validates every protected session and enforces admin authorization.
 - Supabase is the identity provider and managed data platform. The service-role key exists only in the backend environment.
-- Stripe receives payment details on its hosted page. Express alone holds the test secret and verifies webhook signatures.
+- Stripe receives payment details on its hosted page. Express alone holds the secret key and chooses the Price.
 
 ## Package responsibilities
 
@@ -39,7 +39,7 @@ Express Stripe adapter
 ## Intentional limits
 
 - There is no product-specific schema or branding.
-- The Stripe flow is an integration smoke test, not a billing, entitlement, or product model.
+- The Stripe integration does not yet define a billing, entitlement, or product model.
 - User/admin roles exist, but substantive multi-tenant membership and tenant-owned product tables do not yet exist.
 - Redis coordinates rate-limit counters across instances, but process-local lockout state, OAuth PKCE state, and the audit fallback still limit safe backend scaling to one replica.
 

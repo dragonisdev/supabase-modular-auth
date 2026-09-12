@@ -218,11 +218,6 @@ describe("OpenAPI contract", () => {
     const unsafeOperations = getContractOperations().filter(({ method }) => method !== "get");
 
     for (const { method, path, operation } of unsafeOperations) {
-      if (path === "/billing/webhook") {
-        expect(operation.security).toEqual([{ stripeSignature: [] }]);
-        continue;
-      }
-
       expect(operation.security?.length, `${method.toUpperCase()} ${path}`).toBeGreaterThan(0);
       for (const requirement of operation.security ?? []) {
         expect(requirement, `${method.toUpperCase()} ${path}`).toHaveProperty("csrfCookie");
@@ -234,7 +229,7 @@ describe("OpenAPI contract", () => {
   it("requires access or refresh authentication on protected routes", () => {
     const protectedOperations = getContractOperations().filter(
       ({ path }) =>
-        path === "/auth/me" || path.startsWith("/admin/") || path === "/billing/test-checkout",
+        path === "/auth/me" || path.startsWith("/admin/") || path === "/billing/checkout",
     );
 
     for (const { method, path, operation } of protectedOperations) {

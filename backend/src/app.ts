@@ -152,13 +152,6 @@ class App {
       }),
     );
 
-    // Stripe verifies webhook signatures against the exact request bytes.
-    // Parse only this path as raw data before the general JSON parser.
-    this.app.use(
-      "/billing/webhook",
-      express.raw({ limit: config.STRIPE_WEBHOOK_MAX_SIZE, type: "application/json" }),
-    );
-
     // Body parsing with strict size limits
     this.app.use(
       express.json({

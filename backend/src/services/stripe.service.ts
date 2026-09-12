@@ -1,36 +1,27 @@
-import type {
-  StripeCheckoutTestData,
-  StripeWebhookReceiptData,
-} from "@supabase-modular-auth/types";
+import type { StripeCheckoutData } from "@supabase-modular-auth/types";
 
 import { Stripe } from "stripe";
 
 import config from "../config/env.js";
-import { ServiceUnavailableError, ValidationError } from "../utils/errors.js";
+import { ServiceUnavailableError } from "../utils/errors.js";
 
 export interface StripeServiceOptions {
-  enabled: boolean;
   priceId?: string;
   secretKey?: string;
   stripe: Stripe | null;
-  webhookSecret?: string;
 }
 
 export class StripeService {
-  private readonly enabled: boolean;
   private readonly priceId?: string;
   private readonly stripe: Stripe | null;
-  private readonly webhookSecret?: string;
 
   constructor(options: Partial<StripeServiceOptions> = {}) {
-    this.enabled = options.enabled ?? config.STRIPE_SMOKE_TEST_ENABLED;
-    this.priceId = options.priceId ?? config.STRIPE_TEST_PRICE_ID;
-    this.webhookSecret = options.webhookSecret ?? config.STRIPE_WEBHOOK_SECRET;
+    this.priceId = options.priceId ?? config.STRIPE_PRICE_ID;
 
     const secretKey = options.secretKey ?? config.STRIPE_SECRET_KEY;
     this.stripe =
       options.stripe === undefined
-        ? this.enabled && secretKey
+        ? secretKey
           ? new Stripe(secretKey, {
               maxNetworkRetries: 1,
               timeout: Math.min(config.REQUEST_TIMEOUT_MS, 10_000),
@@ -39,29 +30,33 @@ export class StripeService {
         : options.stripe;
   }
 
-  public async createCheckoutTest(user: { id: string }): Promise<StripeCheckoutTestData> {
+  public async createCheckout(user: { id: string }): Promise<StripeCheckoutData> {
     const stripe = this.requireStripe();
     const priceId = this.priceId;
     if (!priceId) {
-      throw new ServiceUnavailableError("Stripe Checkout smoke test is not configured");
+      throw new ServiceUnavailableError("Stripe Checkout is not configured");
     }
 
-    const returnUrl = new URL("/billing/test", config.FRONTEND_URL);
+    const returnUrl = new URL("/billing", config.FRONTEND_URL);
     const successUrl = new URL(returnUrl);
     successUrl.searchParams.set("checkout", "returned");
     const cancelUrl = new URL(returnUrl);
     cancelUrl.searchParams.set("checkout", "cancelled");
 
     try {
+      const price = await stripe.prices.retrieve(priceId);
+      if (!price.active) {
+        throw new ServiceUnavailableError("The configured Stripe Price is inactive");
+      }
+
       const session = await stripe.checkout.sessions.create({
         cancel_url: cancelUrl.toString(),
         client_reference_id: user.id,
         line_items: [{ price: priceId, quantity: 1 }],
         metadata: {
-          purpose: "integration_smoke_test",
           supabase_user_id: user.id,
         },
-        mode: "payment",
+        mode: price.recurring ? "subscription" : "payment",
         success_url: successUrl.toString(),
       });
 
@@ -78,35 +73,9 @@ export class StripeService {
     }
   }
 
-  public verifyWebhook(payload: Buffer, signature: string): StripeWebhookReceiptData {
-    const stripe = this.requireStripe();
-    const webhookSecret = this.webhookSecret;
-    if (!webhookSecret) {
-      throw new ServiceUnavailableError("Stripe webhook verification is not configured");
-    }
-
-    let event: Stripe.Event;
-    try {
-      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-    } catch {
-      throw new ValidationError("Invalid Stripe webhook signature");
-    }
-
-    const checkoutCompleted = event.type === "checkout.session.completed";
-    const checkoutSession = checkoutCompleted ? event.data.object : null;
-
-    return {
-      checkoutCompleted,
-      eventId: event.id,
-      eventType: event.type,
-      paymentStatus:
-        checkoutSession?.object === "checkout.session" ? checkoutSession.payment_status : null,
-    };
-  }
-
   private requireStripe(): Stripe {
-    if (!this.enabled || !this.stripe) {
-      throw new ServiceUnavailableError("Stripe Checkout smoke test is not configured");
+    if (!this.stripe) {
+      throw new ServiceUnavailableError("Stripe Checkout is not configured");
     }
 
     return this.stripe;

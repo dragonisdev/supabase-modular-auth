@@ -9,8 +9,7 @@ pnpm test:coverage
 ```
 
 Stripe unit and Express integration tests mock the provider SDK and require no credentials. To run a
-real sandbox payment and signed webhook locally, use the separate
-[Stripe Checkout smoke-test guide](billing/stripe-smoke-test.md).
+real test-mode Checkout locally, use the [Stripe Checkout guide](billing/stripe.md).
 
 Prefer tests that fail when a meaningful behavior changes: authorization decisions, token and
 password boundaries, session rotation, cookie security, and error classification. Use table-driven

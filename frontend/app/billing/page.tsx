@@ -10,7 +10,7 @@ import { api, getErrorMessage, isSessionUnavailable } from "@/lib/api";
 
 type CheckoutReturn = "cancelled" | "returned" | null;
 
-export default function StripeCheckoutTestPage() {
+export default function BillingPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [checkoutReturn, setCheckoutReturn] = useState<CheckoutReturn>(null);
@@ -43,7 +43,7 @@ export default function StripeCheckoutTestPage() {
     setStartingCheckout(true);
     setError("");
 
-    const response = await api.billing.createCheckoutTest();
+    const response = await api.billing.createCheckout();
     if (response.success && response.data?.url) {
       window.location.assign(response.data.url);
       return;
@@ -60,7 +60,7 @@ export default function StripeCheckoutTestPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-        <p className="text-gray-600">Loading Stripe test...</p>
+        <p className="text-gray-600">Loading billing...</p>
       </main>
     );
   }
@@ -69,7 +69,7 @@ export default function StripeCheckoutTestPage() {
     return error ? (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
         <div className="max-w-md rounded-lg bg-white p-6 text-center shadow-md">
-          <h1 className="text-xl font-semibold">Session check unavailable</h1>
+          <h1 className="text-xl font-semibold">Billing is temporarily unavailable</h1>
           <p className="mt-3 text-sm text-gray-600">{error}</p>
           <button
             type="button"
@@ -86,11 +86,11 @@ export default function StripeCheckoutTestPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6">
       <section className="mx-auto max-w-2xl rounded-lg bg-white p-6 shadow-md sm:p-8">
-        <p className="text-sm font-medium text-blue-700">Integration smoke test</p>
+        <p className="text-sm font-medium text-blue-700">Billing</p>
         <h1 className="mt-2 text-3xl font-bold">Stripe-hosted Checkout</h1>
         <p className="mt-4 text-gray-600">
-          This test creates a one-time Checkout Session with the configured Stripe test Price. It
-          does not create a plan, subscription, credit balance, or product entitlement.
+          Continue to the payment page for the Price configured by this application. Stripe securely
+          collects the payment details.
         </p>
 
         {checkoutReturn === "returned" && (
@@ -98,9 +98,8 @@ export default function StripeCheckoutTestPage() {
             role="status"
             className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900"
           >
-            Stripe returned the browser. Confirm the backend logged a verified{" "}
-            <code className="font-mono">checkout.session.completed</code> webhook before treating
-            the smoke test as complete.
+            Stripe returned you to the app. Confirm the payment result in Stripe; this return alone
+            does not grant product access.
           </div>
         )}
 
@@ -109,7 +108,7 @@ export default function StripeCheckoutTestPage() {
             role="status"
             className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
           >
-            Checkout was cancelled. No product access or local billing state changed.
+            Checkout was cancelled. You can try again when you are ready.
           </div>
         )}
 
@@ -129,7 +128,7 @@ export default function StripeCheckoutTestPage() {
             disabled={startingCheckout}
             className="rounded-md bg-blue-600 px-5 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {startingCheckout ? "Opening Checkout..." : "Start test payment"}
+            {startingCheckout ? "Opening Checkout..." : "Continue to Checkout"}
           </button>
           <Link
             href="/dashboard"
@@ -139,9 +138,7 @@ export default function StripeCheckoutTestPage() {
           </Link>
         </div>
 
-        <p className="mt-6 text-xs text-gray-500">
-          Signed in as {user.email}. Only Stripe test-mode credentials are accepted by the backend.
-        </p>
+        <p className="mt-6 text-xs text-gray-500">Signed in as {user.email}.</p>
       </section>
     </main>
   );
