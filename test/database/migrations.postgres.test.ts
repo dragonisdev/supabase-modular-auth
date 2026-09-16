@@ -53,6 +53,11 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
     client = new Client({ connectionString: disposableDatabaseUrl.toString() });
     await client.connect();
 
+    // Supabase owns this schema in hosted/local projects. The disposable plain
+    // PostgreSQL database only needs the referenced identity table.
+    await client.query("create schema auth");
+    await client.query("create table auth.users (id uuid primary key)");
+
     await migrationFiles.reduce(async (previousMigration, migration) => {
       await previousMigration;
       await client.query(migration.sql);
@@ -86,10 +91,16 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
     const result = await client.query<{ table_name: string }>(`
       select table_name
       from information_schema.tables
-      where table_schema = 'public' and table_name = 'admin_audit_logs'
+      where table_schema = 'public'
+        and table_name in ('admin_audit_logs', 'billing_accounts', 'billing_credit_ledger')
+      order by table_name
     `);
 
-    expect(result.rows).toEqual([{ table_name: "admin_audit_logs" }]);
+    expect(result.rows).toEqual([
+      { table_name: "admin_audit_logs" },
+      { table_name: "billing_accounts" },
+      { table_name: "billing_credit_ledger" },
+    ]);
   });
 
   it("enables RLS and denies browser roles access to audit logs", async () => {
@@ -213,5 +224,35 @@ describeWithDatabase("Supabase migrations on PostgreSQL", () => {
       [[oldId, recentId]],
     );
     expect(remaining.rows).toEqual([{ id: recentId }]);
+  });
+
+  it("fulfills a credit purchase atomically and idempotently", async () => {
+    const userId = randomUUID();
+    await client.query("insert into auth.users (id) values ($1)", [userId]);
+
+    await client.query("set role service_role");
+    try {
+      const parameters = [
+        userId,
+        "cus_postgres123",
+        "evt_postgres123",
+        "cs_postgres123",
+        "pi_postgres123",
+        "price_postgres123",
+        1000,
+        "usd",
+        20,
+      ];
+      const sql = `select * from public.fulfill_stripe_credit_purchase(
+        $1, $2, $3, $4, $5, $6, $7, $8, $9
+      )`;
+      const first = await client.query<{ applied: boolean; balance: string }>(sql, parameters);
+      const duplicate = await client.query<{ applied: boolean; balance: string }>(sql, parameters);
+
+      expect(first.rows).toEqual([{ applied: true, balance: "20" }]);
+      expect(duplicate.rows).toEqual([{ applied: false, balance: "20" }]);
+    } finally {
+      await client.query("reset role");
+    }
   });
 });

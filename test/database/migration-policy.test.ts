@@ -127,6 +127,32 @@ describe("Supabase migration policy", () => {
     );
   });
 
+  it("keeps billing writes backend-only and fulfillment idempotent", () => {
+    const billingMigration = migrationFiles.find((migration) =>
+      migration.sql.includes("public.billing_credit_ledger"),
+    );
+
+    expect(billingMigration, "billing migration is missing").toBeDefined();
+
+    const sql = normalizeSql(billingMigration?.sql ?? "");
+    expect(sql).toContain(
+      "revoke all on public.billing_accounts from public, anon, authenticated, service_role",
+    );
+    expect(sql).toContain(
+      "revoke all on public.billing_credit_ledger from public, anon, authenticated, service_role",
+    );
+    expect(sql).toContain(
+      "grant select, insert, update on public.billing_accounts to service_role",
+    );
+    expect(sql).toContain("grant select, insert on public.billing_credit_ledger to service_role");
+    expect(sql).toContain("stripe_event_id text unique");
+    expect(sql).toContain("stripe_checkout_session_id text unique");
+    expect(sql).toContain("security invoker set search_path = public");
+    expect(sql).toContain(
+      "grant execute on function public.fulfill_stripe_credit_purchase( uuid, text, text, text, text, text, bigint, text, integer ) to service_role",
+    );
+  });
+
   it("requires tenant-owned tables to declare both RLS and a policy", () => {
     expect(findMissingTenantPolicy(migrationFiles)).toEqual([]);
   });

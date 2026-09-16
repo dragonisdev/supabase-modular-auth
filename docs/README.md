@@ -17,6 +17,7 @@ Start with [setup](setup.md), then use the focused guides below.
 - [Database migrations](database/migrations.md)
 - [Admin access](operations/admin-access.md)
 - [Testing](testing.md)
+- [Stripe Checkout](billing/stripe.md)
 - [Railway deployment](deployment/railway.md)
 
 ## Project records
@@ -24,5 +25,6 @@ Start with [setup](setup.md), then use the focused guides below.
 - [Admin role delegation decision](decisions/admin-role-delegation.md)
 - [Declarative database schema decision](decisions/declarative-database-schema.md)
 - [Redis rate-limiting decision](decisions/0001-redis-rate-limiting.md)
+- [Stripe billing and credit entitlements decision](decisions/0002-stripe-billing-and-credit-entitlements.md)
 
 The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding agents discover it there.

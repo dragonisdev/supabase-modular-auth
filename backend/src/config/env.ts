@@ -105,6 +105,24 @@ const baseEnvSchema = z.object({
     .optional()
     .default(30_000),
 
+  // Stripe-hosted Checkout (optional)
+  STRIPE_SECRET_KEY: z.string().trim().startsWith("sk_").min(16).optional(),
+  STRIPE_PRICE_ID: z
+    .string()
+    .trim()
+    .regex(/^price_[A-Za-z0-9]+$/)
+    .optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().trim().startsWith("whsec_").min(16).optional(),
+  STRIPE_CREDITS_PER_PURCHASE: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .refine((value) => value > 0 && value <= 1_000_000, {
+      message: "Must be between 1 and 1000000",
+    })
+    .optional()
+    .default(20),
+  STRIPE_WEBHOOK_MAX_SIZE: z.string().trim().min(1).optional().default("256kb"),
   // Security
   TRUST_PROXY: z
     .string()
@@ -136,6 +154,21 @@ export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
           code: "custom",
           path: [key],
           message: "Required when REDIS_TRANSPORT=rest",
+        });
+      }
+    }
+  }
+
+  const stripeConfigured = Boolean(
+    env.STRIPE_SECRET_KEY || env.STRIPE_PRICE_ID || env.STRIPE_WEBHOOK_SECRET,
+  );
+  if (stripeConfigured) {
+    for (const key of ["STRIPE_SECRET_KEY", "STRIPE_PRICE_ID", "STRIPE_WEBHOOK_SECRET"] as const) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Required when Stripe billing is configured",
         });
       }
     }

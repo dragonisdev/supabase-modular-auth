@@ -87,7 +87,7 @@ const extractExpressOperations = (source: string, prefix = ""): Set<string> => {
       continue;
     }
 
-    const joinedPath = `${prefix}${routePath}`.replace(/\/{2,}/g, "/");
+    const joinedPath = `${prefix}${routePath}`.replace(/\/{2,}/g, "/").replace(/\/$/, "") || "/";
     operations.add(`${method.toUpperCase()} ${toOpenApiPath(joinedPath)}`);
   }
 
@@ -119,6 +119,14 @@ const discoverExpressOperations = (): Set<string> => {
     {
       symbol: "adminRoutes",
       source: readFixture("../../backend/src/routes/admin.routes.ts"),
+    },
+    {
+      symbol: "billingRoutes",
+      source: readFixture("../../backend/src/routes/billing.routes.ts"),
+    },
+    {
+      symbol: "billingWebhookRoutes",
+      source: readFixture("../../backend/src/routes/billing.routes.ts"),
     },
   ];
 
@@ -211,7 +219,9 @@ describe("OpenAPI contract", () => {
   });
 
   it("requires both CSRF credentials for every unsafe route", () => {
-    const unsafeOperations = getContractOperations().filter(({ method }) => method !== "get");
+    const unsafeOperations = getContractOperations().filter(
+      ({ method, path }) => method !== "get" && path !== "/billing/webhook",
+    );
 
     for (const { method, path, operation } of unsafeOperations) {
       expect(operation.security?.length, `${method.toUpperCase()} ${path}`).toBeGreaterThan(0);
@@ -222,9 +232,21 @@ describe("OpenAPI contract", () => {
     }
   });
 
+  it("uses the Stripe signature instead of browser CSRF on the webhook", () => {
+    const webhook = getContractOperations().find(
+      ({ method, path }) => method === "post" && path === "/billing/webhook",
+    );
+
+    expect(webhook?.operation.security).toEqual([{ stripeSignature: [] }]);
+  });
+
   it("requires access or refresh authentication on protected routes", () => {
     const protectedOperations = getContractOperations().filter(
-      ({ path }) => path === "/auth/me" || path.startsWith("/admin/"),
+      ({ path }) =>
+        path === "/auth/me" ||
+        path.startsWith("/admin/") ||
+        path === "/billing" ||
+        path === "/billing/checkout",
     );
 
     for (const { method, path, operation } of protectedOperations) {
