@@ -33,5 +33,10 @@ Once the product's billing and ownership model is known, add signed webhook hand
 idempotency, billing-state persistence, reconciliation, and entitlement fulfillment. Never grant
 access from the Checkout return URL. This initial integration requires no Supabase migration.
 
+The accepted direction for the first entitlement slice is recorded in
+[ADR 0002](../decisions/0002-stripe-billing-and-credit-entitlements.md): one-time Checkout grants
+20 non-expiring credits through an append-only ledger, while subscriptions remain an additive future
+extension.
+
 See Stripe's documentation for the [hosted Checkout lifecycle](https://docs.stripe.com/payments/checkout/how-checkout-works?payment-ui=stripe-hosted)
 and [test values](https://docs.stripe.com/testing).
