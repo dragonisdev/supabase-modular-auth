@@ -4,8 +4,9 @@ Status: accepted
 
 Date: 2026-09-16
 
-Implementation: deferred. The current Stripe foundation creates hosted Checkout Sessions but does
-not yet persist billing state or grant credits.
+Implementation: accepted first slice implemented. Stripe test-mode Checkout, signed webhook
+fulfillment, billing persistence, and 20-credit grants are included. Live-payment reconciliation and
+credit consumption remain deferred as described below.
 
 ## Context and constraints
 

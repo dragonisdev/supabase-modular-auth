@@ -36,5 +36,6 @@ Password recovery uses a request-scoped implicit-flow client so the email return
 
 `pnpm --filter @supabase-modular-auth/frontend dev` uses port 3001. Production `next start` honors the platform's `PORT` variable. Keep frontend and backend on the same site through proxying to reduce Safari/ITP cookie failures.
 
-The billing page redirects to Stripe-hosted Checkout using a URL created by Express. It never
-receives a Stripe secret or handles card data.
+The billing page reads its credit balance from Express and redirects to Stripe-hosted Checkout using
+a server-created URL. It never receives a Stripe secret, chooses a Price or grant, handles card data,
+or fulfills a purchase from the browser return URL.

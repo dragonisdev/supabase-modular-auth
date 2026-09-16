@@ -197,6 +197,24 @@ describe("frontend API client", () => {
     );
   });
 
+  it("reads the billing balance through the same-origin proxy", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        success: true,
+        message: "Billing overview retrieved",
+        data: { credits: 20, creditsPerPurchase: 20 },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.billing.getOverview();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/billing",
+      expect.objectContaining({ credentials: "include" }),
+    );
+  });
+
   it("preserves the HTTP status when an upstream returns malformed JSON", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response("{not-json", {

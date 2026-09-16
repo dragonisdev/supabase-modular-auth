@@ -13,7 +13,7 @@ import { createRateLimiter } from "./middleware/rate-limit.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 import { createAdminRoutes } from "./routes/admin.routes.js";
 import { createAuthRoutes } from "./routes/auth.routes.js";
-import { createBillingRoutes } from "./routes/billing.routes.js";
+import { createBillingRoutes, createBillingWebhookRoutes } from "./routes/billing.routes.js";
 import * as SecurityLogger from "./utils/logger.js";
 
 /**
@@ -151,6 +151,11 @@ class App {
         optionsSuccessStatus: 204,
       }),
     );
+
+    // Stripe authenticates this endpoint with a signature over the exact raw body.
+    // It must be mounted before JSON parsing and browser CSRF middleware.
+    const billingWebhookRoutes = createBillingWebhookRoutes();
+    this.app.use("/billing", billingWebhookRoutes);
 
     // Body parsing with strict size limits
     this.app.use(

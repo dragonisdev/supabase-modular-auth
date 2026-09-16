@@ -143,6 +143,7 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 ### Protected
 
 - `GET /auth/me`
+- `GET /billing`
 - `POST /billing/checkout`
 - `GET /admin/users`
 - `GET /admin/users/:id`
@@ -153,6 +154,10 @@ Backend uses **stronger password checks** (`zxcvbn` score >= 3) in `backend/src/
 - `POST /admin/users/:id/unban`
 - `POST /admin/users/bulk`
 - `GET /admin/audit-logs`
+
+### Provider callbacks
+
+- `POST /billing/webhook` (Stripe signature over the raw body; no browser CSRF)
 
 ### Admin authorization
 
@@ -195,7 +200,7 @@ Error `details` are only included in development (see `error.middleware.ts`).
 - Cookie: `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`
 - Rate limit: `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`
 - Redis: `REDIS_TRANSPORT` (`tcp` default or `rest`), `REDIS_KEY_PREFIX`. TCP uses `REDIS_TCP_CONNECTION_URL` (required in production), `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` (`0` disables periodic PING). REST requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, with `REDIS_REST_TIMEOUT_MS` (default 5000).
-- Stripe: `STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` configure hosted Checkout.
+- Stripe credit billing: `STRIPE_SECRET_KEY`, one one-time `STRIPE_PRICE_ID`, and `STRIPE_WEBHOOK_SECRET` are required together. `STRIPE_CREDITS_PER_PURCHASE` defaults to 20 and `STRIPE_WEBHOOK_MAX_SIZE` defaults to `256kb`.
 - Security: `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`
 - Lockout: `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`
 
@@ -255,6 +260,9 @@ Use Node.js 24 LTS (the Node.js 22.18+ LTS line is also supported). The pinned p
 - The backend is strict about payload sizes and timeouts (`MAX_REQUEST_SIZE`, `REQUEST_TIMEOUT_MS`).
 - There is no tenant-owned product table yet. The migration tests require RLS and a policy for any
   future table containing `tenant_id`; add two-tenant behavioral tests with the first such schema.
+- Billing state is backend-only: `billing_accounts` maps Supabase users to Stripe Customers and
+  `billing_credit_ledger` is the append-only entitlement history. The signed webhook, not the
+  Checkout return URL, grants credits.
 - `supabase/` is the canonical Supabase CLI project and home for database workflow SQL. Edit
   `supabase/schemas/` as the declarative source of truth and treat generated files in
   `supabase/migrations/` as ordered, immutable history after application. Files in

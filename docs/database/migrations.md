@@ -1,6 +1,8 @@
 # Database migrations and operations
 
-`supabase/` is the conventional Supabase CLI project and the canonical home for database workflow SQL. The current migration creates durable, service-role-only admin audit logging with RLS, append-only controls, and explicit function privileges.
+`supabase/` is the conventional Supabase CLI project and the canonical home for database workflow
+SQL. The migrations create durable, service-role-only admin audit logging and billing credit state
+with RLS, append-only controls, explicit grants, and restricted function privileges.
 
 ```text
 supabase/
@@ -8,10 +10,12 @@ supabase/
 ├─ config.toml                        # Secret-free local project configuration
 ├─ schemas/
 │  ├─ extensions.sql                  # Explicit Supabase extension baseline
-│  └─ admin_audit_logs.sql            # Application-owned desired state
+│  ├─ admin_audit_logs.sql            # Admin-audit desired state
+│  └─ billing.sql                     # Stripe customer + credit-ledger desired state
 ├─ migrations/
-│  └─ 20260311000000_admin_audit_logs.sql
-└─ tests/admin_audit_logs.test.sql    # pgTAP security checks
+│  ├─ 20260311000000_admin_audit_logs.sql
+│  └─ 20260916183000_stripe_credit_billing.sql
+└─ tests/                             # pgTAP security and idempotency checks
 ```
 
 ## Declarative schema workflow
@@ -104,7 +108,8 @@ logs in to Supabase, links a hosted project, or applies remote migrations.
    ```
 
 6. Run `migration list` again and verify that local and hosted histories agree. Confirm that
-   `public.admin_audit_logs` exists, then exercise the application verification checklist in
+   `public.admin_audit_logs`, `public.billing_accounts`, and `public.billing_credit_ledger` exist,
+   then exercise the application verification checklist in
    [Setup](../setup.md#verification-checklist).
 
 Only one operator or release job should push migrations to a given project at a time. For later

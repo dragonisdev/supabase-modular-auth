@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthUser } from "@supabase-modular-auth/types";
+import type { AuthUser, BillingOverviewData } from "@supabase-modular-auth/types";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ type CheckoutReturn = "cancelled" | "returned" | null;
 export default function BillingPage() {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [billing, setBilling] = useState<BillingOverviewData | null>(null);
   const [checkoutReturn, setCheckoutReturn] = useState<CheckoutReturn>(null);
   const [loading, setLoading] = useState(true);
   const [startingCheckout, setStartingCheckout] = useState(false);
@@ -24,19 +25,25 @@ export default function BillingPage() {
       setCheckoutReturn(returnState);
     }
 
-    const fetchUser = async () => {
-      const response = await api.getMe();
-      if (response.success && response.data) {
-        setUser(response.data.user);
-      } else if (isSessionUnavailable(response)) {
-        setError(getErrorMessage(response));
+    const fetchBilling = async () => {
+      const [userResponse, billingResponse] = await Promise.all([
+        api.getMe(),
+        api.billing.getOverview(),
+      ]);
+      if (userResponse.success && userResponse.data && billingResponse.success) {
+        setUser(userResponse.data.user);
+        setBilling(billingResponse.data ?? null);
+      } else if (isSessionUnavailable(userResponse) || isSessionUnavailable(billingResponse)) {
+        setError(
+          getErrorMessage(isSessionUnavailable(userResponse) ? userResponse : billingResponse),
+        );
       } else {
         router.push("/login");
       }
       setLoading(false);
     };
 
-    void fetchUser();
+    void fetchBilling();
   }, [router]);
 
   const handleCheckout = useCallback(async () => {
@@ -87,10 +94,10 @@ export default function BillingPage() {
     <main className="min-h-screen bg-gray-50 px-4 py-12 sm:px-6">
       <section className="mx-auto max-w-2xl rounded-lg bg-white p-6 shadow-md sm:p-8">
         <p className="text-sm font-medium text-blue-700">Billing</p>
-        <h1 className="mt-2 text-3xl font-bold">Stripe-hosted Checkout</h1>
+        <h1 className="mt-2 text-3xl font-bold">Buy credits</h1>
         <p className="mt-4 text-gray-600">
-          Continue to the payment page for the Price configured by this application. Stripe securely
-          collects the payment details.
+          Your current balance is <strong>{billing?.credits ?? 0} credits</strong>. Stripe securely
+          collects payment details for the configured one-time credit pack.
         </p>
 
         {checkoutReturn === "returned" && (
@@ -98,8 +105,8 @@ export default function BillingPage() {
             role="status"
             className="mt-6 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900"
           >
-            Stripe returned you to the app. Confirm the payment result in Stripe; this return alone
-            does not grant product access.
+            Stripe returned you to the app. The signed webhook grants credits independently, so the
+            updated balance may take a moment to appear. Refresh this page to check it.
           </div>
         )}
 
@@ -128,7 +135,9 @@ export default function BillingPage() {
             disabled={startingCheckout}
             className="rounded-md bg-blue-600 px-5 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            {startingCheckout ? "Opening Checkout..." : "Continue to Checkout"}
+            {startingCheckout
+              ? "Opening Checkout..."
+              : `Buy ${billing?.creditsPerPurchase ?? 20} credits`}
           </button>
           <Link
             href="/dashboard"

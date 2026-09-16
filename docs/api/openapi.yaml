@@ -261,14 +261,67 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /billing:
+    get:
+      operationId: getBillingOverview
+      summary: Get the authenticated user's credit balance
+      tags: [Billing]
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      responses:
+        "200":
+          $ref: "#/components/responses/BillingOverviewSuccess"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /billing/webhook:
+    post:
+      operationId: receiveStripeWebhook
+      summary: Verify and fulfill a Stripe webhook
+      description: |
+        Stripe provider endpoint. Signature verification over the unmodified raw
+        body replaces browser authentication and CSRF for this route.
+      tags: [Billing]
+      security:
+        - stripeSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          $ref: "#/components/responses/StripeWebhookReceived"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "408":
+          $ref: "#/components/responses/RequestTimeout"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /billing/checkout:
     post:
       operationId: createStripeCheckout
       summary: Create a Stripe-hosted Checkout Session
       description: |
-        Creates a Checkout Session for the server-configured Stripe Price. The
-        Price determines whether Checkout is one-time or recurring. This endpoint
-        does not persist billing state or grant product access.
+        Creates a one-time Checkout Session for the server-configured Stripe
+        Price. A verified paid webhook grants the configured credit pack; the
+        browser return never grants credits.
       tags: [Billing]
       security:
         - accessCookie: []
@@ -630,6 +683,10 @@ components:
       type: apiKey
       in: header
       name: X-CSRF-Token
+    stripeSignature:
+      type: apiKey
+      in: header
+      name: Stripe-Signature
   parameters:
     UserId:
       name: id
@@ -803,6 +860,24 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/StripeCheckoutResponse"
+    BillingOverviewSuccess:
+      description: Current credit balance returned.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BillingOverviewResponse"
+    StripeWebhookReceived:
+      description: Stripe event verified and acknowledged.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/RequestId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StripeWebhookResponse"
     AdminUsersSuccess:
       description: Paginated users returned.
       headers:
@@ -1113,6 +1188,42 @@ components:
                 url:
                   type: string
                   format: uri
+    BillingOverviewResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [credits, creditsPerPurchase]
+              properties:
+                credits:
+                  type: integer
+                creditsPerPurchase:
+                  type: integer
+                  minimum: 1
+    StripeWebhookResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessEnvelope"
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [balance, creditsGranted, eventId, eventType, processed]
+              properties:
+                balance:
+                  type: [integer, "null"]
+                creditsGranted:
+                  type: integer
+                  minimum: 0
+                eventId:
+                  type: string
+                eventType:
+                  type: string
+                processed:
+                  type: boolean
     AuthUser:
       type: object
       required:

@@ -17,17 +17,17 @@ Use exact origins with no trailing slash for `FRONTEND_URL` and `BACKEND_URL`, f
 
 ## Backend optional values
 
-| Group          | Variables                                                                                                               | Defaults/notes                                                                |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Server         | `PORT`, `NODE_ENV`, `BACKEND_URL`                                                                                       | `3000`, `development`; production must use literal `production`               |
-| Cookies        | `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`                              | Refresh lifetime defaults to 7 days; leave domain unset for `__Host-` cookies |
-| CSRF cookie    | `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE`                                                                           | `strict`; secure flag inherits auth-cookie setting                            |
-| General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`                                     | See `backend/.env.example`                                                    |
-| Redis          | `REDIS_TRANSPORT`, `REDIS_TCP_CONNECTION_URL`, `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS` | TCP is the default; URL is required for TCP in production                     |
-| Redis REST     | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REDIS_REST_TIMEOUT_MS`                                           | REST requires HTTPS URL and read/write token; deadline defaults to 5000 ms    |
-| Stripe         | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`                                                                                  | Optional; both values are needed to open Checkout                             |
-| Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`                                           | Rate limits use Redis; account lockout remains process-local                  |
-| HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                                                 | Proxy hops must match the real topology                                       |
+| Group          | Variables                                                                                                                 | Defaults/notes                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Server         | `PORT`, `NODE_ENV`, `BACKEND_URL`                                                                                         | `3000`, `development`; production must use literal `production`               |
+| Cookies        | `COOKIE_NAME`, `COOKIE_DOMAIN`, `COOKIE_SECURE`, `COOKIE_SAME_SITE`, `COOKIE_MAX_AGE_DAYS`                                | Refresh lifetime defaults to 7 days; leave domain unset for `__Host-` cookies |
+| CSRF cookie    | `CSRF_COOKIE_SAME_SITE`, `CSRF_COOKIE_SECURE`                                                                             | `strict`; secure flag inherits auth-cookie setting                            |
+| General limits | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`, `STRICT_RATE_LIMIT_MAX_REQUESTS`                                       | See `backend/.env.example`                                                    |
+| Redis          | `REDIS_TRANSPORT`, `REDIS_TCP_CONNECTION_URL`, `REDIS_KEY_PREFIX`, `REDIS_CONNECT_TIMEOUT_MS`, `REDIS_PING_INTERVAL_MS`   | TCP is the default; URL is required for TCP in production                     |
+| Redis REST     | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REDIS_REST_TIMEOUT_MS`                                             | REST requires HTTPS URL and read/write token; deadline defaults to 5000 ms    |
+| Stripe         | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PER_PURCHASE`, `STRIPE_WEBHOOK_MAX_SIZE` | Optional as a group; first three values are required together                 |
+| Auth limits    | `AUTH_RATE_LIMIT_MAX_REQUESTS`, `LOCKOUT_MAX_ATTEMPTS`, `LOCKOUT_DURATION_MS`                                             | Rate limits use Redis; account lockout remains process-local                  |
+| HTTP security  | `TRUST_PROXY`, `REQUEST_TIMEOUT_MS`, `MAX_REQUEST_SIZE`                                                                   | Proxy hops must match the real topology                                       |
 
 Production startup rejects insecure auth cookies. Recommended same-origin values are:
 
@@ -48,9 +48,11 @@ With `REDIS_TRANSPORT=rest`, both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_RE
 
 The periodic ping is a portable mitigation for idle TCP connection eviction, not an availability guarantee. It creates outbound traffic, so do not enable Railway Serverless mode for this backend unless you deliberately accept that it will prevent the service from sleeping.
 
-`STRIPE_SECRET_KEY` is a backend-only secret. `STRIPE_PRICE_ID` identifies the single
-server-selected Price; its recurring setting determines Checkout mode. Test and live credentials
-use the same application code. See [Stripe Checkout](../billing/stripe.md) for the workflow.
+`STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are backend-only secrets. `STRIPE_PRICE_ID`
+identifies the single server-selected one-time Price. Paid signed webhooks grant the configured
+credit amount (20 by default). Test and live credentials use the same code, but refund and dispute
+reconciliation must be added before accepting live payments. See
+[Stripe Checkout](../billing/stripe.md) for the workflow.
 
 ## Rate-limit behavior
 

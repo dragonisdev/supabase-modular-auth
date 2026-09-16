@@ -13,6 +13,7 @@ import type {
   LoginResponseData,
   GetMeResponseData,
   GoogleAuthUrlResponseData,
+  BillingOverviewData,
   StripeCheckoutData,
 } from "@supabase-modular-auth/types";
 
@@ -306,6 +307,7 @@ export const api = {
   },
 
   billing: {
+    getOverview: () => fetchAPI<BillingOverviewData>(BILLING_API_PREFIX),
     createCheckout: () =>
       fetchAPI<StripeCheckoutData>(`${BILLING_API_PREFIX}/checkout`, {
         method: "POST",
