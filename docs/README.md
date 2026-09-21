@@ -30,3 +30,4 @@ The root [AGENTS.md](../AGENTS.md) remains at the repository root because coding
 ## Contribution workflow
 
 Changes are proposed through pull requests so they can be reviewed before merging.
+Keep pull requests focused so changes are easier to review.
