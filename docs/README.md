@@ -1,5 +1,7 @@
 # Documentation
 
+<!-- Keep this index focused so contributors can find the right guide quickly. -->
+
 Start with [setup](setup.md), then use the focused guides below.
 
 ## Architecture
