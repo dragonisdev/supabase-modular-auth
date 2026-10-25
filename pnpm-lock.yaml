@@ -176,19 +176,9 @@ catalogs:
 
 overrides:
   '@tailwindcss/postcss>postcss': 8.5.26
-  express>body-parser: 2.4.0
-  minimatch@5>brace-expansion: 2.1.7
-  minimatch@10>brace-expansion: 5.0.12
-  fast-uri: 3.1.9
-  js-yaml: 4.3.2
   path-to-regexp: 8.4.0
-  proxy-addr: 2.0.8
-  sharp: 0.35.5
-  source-map-js: 1.2.2
   tinypool: 2.1.2
-  vite: 8.3.5
   vitest>picomatch: 4.0.7
-  mutation-server-protocol>zod: 4.6.7
   qs: 6.16.0
 
 importers:
@@ -367,7 +357,7 @@ importers:
         version: 7.0.0-dev.20260707.2
       postcss:
         specifier: ^8.5.26
-        version: 8.5.26
+        version: 8.5.31
       tailwindcss:
         specifier: ^4.2.1
         version: 4.2.1
@@ -1486,8 +1476,8 @@ packages:
   '@redocly/config@0.22.0':
     resolution: {integrity: sha512-gAy93Ddo01Z3bHuVdPWfCwzgfaYgMdaZPcfL7JZ7hWJoK9V0lXDbigTWkhiPFAaLWzbOJ+kbUQG1+XwIm0KRGQ==, tarball: https://registry.npmjs.org/@redocly/config/-/config-0.22.0.tgz}
 
-  '@redocly/openapi-core@1.34.19':
-    resolution: {integrity: sha512-o/0VgsBXgwcY1lyeqcVtSGdTQAPnVggo0fbFVPlxl5XVDKUcVH0OLRqt3CbkwByT5FU305E0iE0O7MzThjDblw==, tarball: https://registry.npmjs.org/@redocly/openapi-core/-/openapi-core-1.34.19.tgz}
+  '@redocly/openapi-core@1.34.22':
+    resolution: {integrity: sha512-dEyx4uHh6Pc6ZkdU9Xe8rA4h12Odq6QKU/fqseBn07xwVwskhHiF3KHhqmw5BR+jAiFTvKTmwCafFql/k1pSzA==, tarball: https://registry.npmjs.org/@redocly/openapi-core/-/openapi-core-1.34.22.tgz}
     engines: {node: '>=18.17.0', npm: '>=9.5.0'}
 
   '@rolldown/binding-android-arm-eabi@1.2.15':
@@ -1938,7 +1928,7 @@ packages:
     resolution: {integrity: sha512-fKShNpKZzupWZuY0z7egydvL0sqW4INEZBEExMBMAa6izlENEVHwoXgdaTCaBZ5fwlr4xf2o1wXC83n9RpO+NA==, tarball: https://registry.npmjs.org/@vitest/mocker/-/mocker-4.1.12.tgz}
     peerDependencies:
       msw: ^2.4.9
-      vite: 8.3.5
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       msw:
         optional: true
@@ -3315,7 +3305,7 @@ packages:
       '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
-      vite: 8.3.5
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -4188,7 +4178,7 @@ snapshots:
 
   '@redocly/config@0.22.0': {}
 
-  '@redocly/openapi-core@1.34.19(supports-color@10.2.2)':
+  '@redocly/openapi-core@1.34.22(supports-color@10.2.2)':
     dependencies:
       '@redocly/ajv': 8.11.2
       '@redocly/config': 0.22.0
@@ -5483,7 +5473,7 @@ snapshots:
 
   openapi-typescript@7.13.0(typescript@5.9.3):
     dependencies:
-      '@redocly/openapi-core': 1.34.19(supports-color@10.2.2)
+      '@redocly/openapi-core': 1.34.22(supports-color@10.2.2)
       ansi-colors: 4.1.3
       change-case: 5.4.4
       parse-json: 8.3.0
