@@ -2,6 +2,7 @@
 
 import type { AuthUser } from "@supabase-modular-auth/types";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -98,6 +99,12 @@ export default function DashboardPage() {
           <div className="flex h-16 items-center justify-between">
             <h1 className="text-xl font-bold text-black">Dashboard</h1>
             <div className="flex items-center gap-3">
+              <Link
+                href="/billing"
+                className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+              >
+                Billing
+              </Link>
               {user.is_admin && (
                 <button
                   onClick={handleGoToAdmin}

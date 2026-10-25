@@ -196,6 +196,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the authenticated user's credit balance */
+        get: operations["getBillingOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify and fulfill a Stripe webhook
+         * @description Stripe provider endpoint. Signature verification over the unmodified raw
+         *     body replaces browser authentication and CSRF for this route.
+         */
+        post: operations["receiveStripeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a Stripe-hosted Checkout Session
+         * @description Creates a one-time Checkout Session for the server-configured Stripe
+         *     Price. A verified paid webhook grants the configured credit pack; the
+         *     browser return never grants credits.
+         */
+        post: operations["createStripeCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -426,6 +486,27 @@ export interface components {
             data: {
                 /** Format: uri */
                 url: string;
+            };
+        };
+        StripeCheckoutResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                /** Format: uri */
+                url: string;
+            };
+        };
+        BillingOverviewResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                credits: number;
+                creditsPerPurchase: number;
+            };
+        };
+        StripeWebhookResponse: components["schemas"]["SuccessEnvelope"] & {
+            data: {
+                balance: number | null;
+                creditsGranted: number;
+                eventId: string;
+                eventType: string;
+                processed: boolean;
             };
         };
         AuthUser: {
@@ -668,6 +749,36 @@ export interface components {
                 "application/json": components["schemas"]["CurrentUserResponse"];
             };
         };
+        /** @description Stripe-hosted Checkout URL created. */
+        StripeCheckoutCreated: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["StripeCheckoutResponse"];
+            };
+        };
+        /** @description Current credit balance returned. */
+        BillingOverviewSuccess: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["BillingOverviewResponse"];
+            };
+        };
+        /** @description Stripe event verified and acknowledged. */
+        StripeWebhookReceived: {
+            headers: {
+                "X-Request-ID": components["headers"]["RequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["StripeWebhookResponse"];
+            };
+        };
         /** @description Paginated users returned. */
         AdminUsersSuccess: {
             headers: {
@@ -794,7 +905,7 @@ export interface components {
                 "application/json": components["schemas"]["ErrorResponse"];
             };
         };
-        /** @description Session validation is temporarily unavailable; auth cookies are preserved. */
+        /** @description A required upstream service is temporarily unavailable; auth cookies are preserved. */
         ServiceUnavailable: {
             headers: {
                 "X-Request-ID": components["headers"]["RequestId"];
@@ -1007,6 +1118,64 @@ export interface operations {
         responses: {
             200: components["responses"]["CurrentUserSuccess"];
             401: components["responses"]["Unauthorized"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getBillingOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: components["responses"]["BillingOverviewSuccess"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            408: components["responses"]["RequestTimeout"];
+            429: components["responses"]["TooManyRequests"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    receiveStripeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: components["responses"]["StripeWebhookReceived"];
+            400: components["responses"]["BadRequest"];
+            408: components["responses"]["RequestTimeout"];
+            500: components["responses"]["InternalServerError"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    createStripeCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: components["responses"]["StripeCheckoutCreated"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             408: components["responses"]["RequestTimeout"];
             429: components["responses"]["TooManyRequests"];
             500: components["responses"]["InternalServerError"];
