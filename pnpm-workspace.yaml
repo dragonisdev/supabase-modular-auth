@@ -12,14 +12,23 @@ allowBuilds:
 catalog:
   "@types/node": ^25.4.0
   typescript: ^5.9.3
-  zod: ^4.3.6
+  zod: ^4.6.7
 
 lockfileIncludeTarballUrl: true
 
 overrides:
   "@tailwindcss/postcss>postcss": 8.5.26
-  "express>body-parser": 2.3.0
-  fast-uri: 3.1.6
+  "express>body-parser": 2.4.0
+  "minimatch@5>brace-expansion": 2.1.7
+  "minimatch@10>brace-expansion": 5.0.12
+  fast-uri: 3.1.9
+  js-yaml: 4.3.2
   path-to-regexp: 8.4.0
+  proxy-addr: 2.0.8
+  sharp: 0.35.5
+  source-map-js: 1.2.2
+  tinypool: 2.1.2
+  vite: 8.3.5
   "vitest>picomatch": 4.0.7
+  "mutation-server-protocol>zod": 4.6.7
   qs: 6.16.0
